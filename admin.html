@@ -3,278 +3,563 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jogo da Criação — Coruche Digital</title>
+  <title>Admin — Coruche Digital</title>
   <link rel="stylesheet" href="style.css">
   <script>
-    // Apply theme immediately to avoid flash of wrong theme
     (function() {
       const t = localStorage.getItem('crd_theme') || 'dark';
       if (t === 'light') document.documentElement.dataset.theme = 'light';
     })();
   </script>
   <style>
-    /* Ensure overlay displays correctly regardless of CSS load order */
-    .overlay[style*="flex"] { display:flex !important; }
+    /* Admin-specific overrides */
+    html, body { overflow:auto !important; height:auto !important; min-height:100vh; }
+    .admin-wrap { min-height:100vh; background:var(--bg); }
+    .admin-header { background:var(--bg2); border-bottom:1px solid var(--border); padding:12px 28px; display:flex; align-items:center; justify-content:space-between; }
+    .admin-brand  { display:flex; align-items:center; gap:10px; }
+    .admin-logo   { height:30px; object-fit:contain; }
+    .admin-title  { font-family:var(--font-d); font-size:18px; font-weight:800; color:var(--green); }
+    .btn-play     { padding:8px 18px; background:var(--grad); border:none; border-radius:8px; font-family:var(--font-d); font-size:13px; font-weight:800; color:#fff; text-decoration:none; cursor:pointer; }
+    .btn-play:hover { opacity:.9; }
+
+    .admin-tabs { background:var(--bg2); border-bottom:1px solid var(--border); display:flex; padding:0 28px; overflow-x:auto; }
+    .admin-tab  { padding:12px 18px; background:transparent; border:none; border-bottom:3px solid transparent; font-family:var(--font-b); font-size:13px; font-weight:700; color:var(--text2); cursor:pointer; white-space:nowrap; }
+    .admin-tab:hover { color:var(--text); }
+    .admin-tab.on { color:var(--green); border-bottom-color:var(--green); }
+
+    .admin-body { padding:24px 28px 90px; max-width:920px; }
+    .admin-section { display:none; }
+    .admin-section.on { display:block; }
+    .section-heading { font-family:var(--font-d); font-size:20px; font-weight:800; color:var(--text); margin-bottom:1.25rem; }
+    .section-sub     { font-size:13px; color:var(--text2); margin-top:-.75rem; margin-bottom:1.25rem; }
+
+    /* Config */
+    .cfg-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin-bottom:1.5rem; }
+    .cfg-box  { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .cfg-box label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text2); margin-bottom:6px; }
+    .cfg-box input { width:100%; background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:8px 10px; font-size:20px; font-family:var(--font-d); font-weight:700; color:var(--text); outline:none; }
+    .cfg-box input:focus { border-color:var(--green); }
+
+    /* Shops */
+    .shops-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:14px; margin-bottom:1.5rem; }
+    .shop-item  { background:var(--bg2); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:10px; position:relative; width:140px; }
+    .shop-item-logo { width:90px; height:90px; object-fit:contain; border-radius:10px; background:var(--bg3); }
+    .shop-item-name  { font-size:12px; color:var(--text2); text-align:center; }
+    .shop-item-del   { position:absolute; top:8px; right:8px; background:transparent; border:1px solid rgba(255,61,90,.2); border-radius:6px; width:26px; height:26px; color:rgba(255,61,90,.5); cursor:pointer; font-size:12px; }
+    .shop-item-del:hover { background:rgba(255,61,90,.1); color:var(--red); }
+    .btn-add-shop { padding:10px 20px; background:rgba(0,229,160,.08); border:1px dashed rgba(0,229,160,.35); border-radius:10px; font-size:13px; font-weight:700; color:var(--green); cursor:pointer; }
+    .btn-add-shop:hover { background:rgba(0,229,160,.15); }
+
+    /* Add shop form */
+    .add-shop-form { background:var(--bg2); border:1px solid var(--border2); border-radius:14px; padding:20px; margin-bottom:1.5rem; display:none; }
+    .add-shop-form.open { display:block; }
+    .form-row-inline { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .form-field { display:flex; flex-direction:column; gap:5px; flex:1; min-width:140px; }
+    .form-field label { font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; }
+    .form-field input[type="text"] { background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:9px 11px; font-size:14px; color:var(--text); outline:none; }
+    .form-field input[type="text"]:focus { border-color:var(--green); }
+    .form-field input[type="file"] { font-size:12px; color:var(--text2); }
+    .logo-preview { width:60px; height:60px; object-fit:contain; border-radius:8px; background:var(--bg3); border:1px solid var(--border2); display:none; }
+    .btn-save-shop  { padding:10px 20px; background:var(--grad); border:none; border-radius:8px; font-family:var(--font-d); font-size:14px; font-weight:800; color:#fff; cursor:pointer; }
+    .btn-cancel-shop { padding:10px 16px; background:transparent; border:1px solid var(--border2); border-radius:8px; font-size:13px; color:var(--text2); cursor:pointer; }
+
+    /* Items list (challenges/questions) */
+    .item-list { display:flex; flex-direction:column; gap:8px; margin-bottom:1rem; }
+    .item-row  { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; align-items:flex-start; gap:10px; }
+    .item-num  { font-size:12px; font-weight:800; color:var(--text3); min-width:20px; padding-top:2px; }
+    .item-body { flex:1; display:flex; flex-direction:column; gap:6px; }
+    .item-body input,.item-body textarea { width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:7px 9px; font-size:13px; color:var(--text); outline:none; font-family:inherit; }
+    .item-body input:focus,.item-body textarea:focus { border-color:var(--green); }
+    .item-body textarea { resize:vertical; min-height:50px; }
+    .btn-del { background:transparent; border:1px solid rgba(255,61,90,.2); border-radius:7px; width:28px; height:28px; color:rgba(255,61,90,.5); cursor:pointer; font-size:13px; flex-shrink:0; }
+    .btn-del:hover { background:rgba(255,61,90,.08); color:var(--red); }
+    .btn-add { padding:9px 18px; background:rgba(0,229,160,.08); border:1px dashed rgba(0,229,160,.35); border-radius:10px; font-size:13px; font-weight:700; color:var(--green); cursor:pointer; }
+    .btn-add:hover { background:rgba(0,229,160,.15); }
+
+    /* Games management */
+    .games-table { width:100%; border-collapse:collapse; margin-bottom:1rem; }
+    .games-table th { text-align:left; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--text3); padding:7px 10px; border-bottom:1px solid var(--border); }
+    .games-table td { padding:10px 10px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2); vertical-align:middle; }
+    .games-table tr:last-child td { border-bottom:none; }
+    .games-table td:first-child { font-weight:700; color:var(--text); }
+    .game-logo { width:28px; height:28px; object-fit:contain; border-radius:4px; }
+    .badge-fake { display:inline-block; font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:var(--orange); background:rgba(255,179,71,.1); border:1px solid rgba(255,179,71,.25); border-radius:4px; padding:1px 5px; margin-left:6px; }
+    .badge-ok   { color:var(--green); font-weight:700; }
+    .badge-out  { color:var(--red); font-weight:700; }
+    .btn-del-game { padding:4px 10px; background:rgba(255,61,90,.1); border:1px solid rgba(255,61,90,.25); border-radius:6px; font-size:11px; font-weight:700; color:rgba(255,61,90,.7); cursor:pointer; }
+    .btn-del-game:hover { color:var(--red); background:rgba(255,61,90,.18); }
+    .empty-msg { text-align:center; padding:2rem; color:var(--text3); font-size:14px; }
+
+    /* Add fake game form */
+    .fake-form { background:var(--bg2); border:1px solid var(--border2); border-radius:14px; padding:20px; margin-bottom:1.5rem; }
+    .fake-form h3 { font-family:var(--font-d); font-size:16px; font-weight:800; color:var(--orange); margin-bottom:1rem; }
+    .fake-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+    .fake-field { display:flex; flex-direction:column; gap:5px; }
+    .fake-field label { font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:.06em; }
+    .fake-field input,.fake-field select { background:var(--bg3); border:1px solid var(--border2); border-radius:8px; padding:8px 10px; font-size:14px; color:var(--text); outline:none; font-family:inherit; }
+    .fake-field input:focus,.fake-field select:focus { border-color:var(--orange); }
+    .fake-field select option { background:var(--bg2); }
+    .btn-add-fake { padding:10px 20px; background:rgba(255,179,71,.12); border:1px solid rgba(255,179,71,.35); border-radius:8px; font-family:var(--font-d); font-size:14px; font-weight:800; color:var(--orange); cursor:pointer; }
+    .btn-add-fake:hover { background:rgba(255,179,71,.2); }
+    .btn-new-game { padding:10px 22px; background:var(--grad); border:none; border-radius:8px; font-family:var(--font-d); font-size:14px; font-weight:800; color:#fff; cursor:pointer; text-decoration:none; display:inline-block; }
+    .btn-new-game:hover { opacity:.9; }
+    .btn-clear-today { padding:7px 14px; background:transparent; border:1px solid rgba(255,61,90,.25); border-radius:8px; font-size:12px; font-weight:700; color:rgba(255,61,90,.7); cursor:pointer; }
+    .btn-clear-today:hover { color:var(--red); background:rgba(255,61,90,.07); }
+
+    /* Theme toggle */
+    .theme-toggle-row { display:flex; align-items:center; justify-content:space-between; background:var(--bg2); border:1px solid var(--border); border-radius:12px; padding:14px 18px; margin-bottom:1.5rem; }
+    .theme-label { font-size:14px; font-weight:700; color:var(--text); }
+    .theme-options { display:flex; gap:8px; }
+    .theme-btn { padding:8px 18px; background:var(--bg3); border:1px solid var(--border2); border-radius:8px; font-size:13px; font-weight:700; color:var(--text2); cursor:pointer; transition:all .15s; }
+    .theme-btn.on { background:linear-gradient(135deg,var(--green),var(--blue)); border-color:transparent; color:#fff; }
+    .theme-btn:hover:not(.on) { background:var(--surface); color:var(--text); }
+
+    /* Save bar */
+    .admin-bar { position:fixed; bottom:0; left:0; right:0; background:var(--bg2); border-top:1px solid var(--border); padding:12px 28px; display:flex; align-items:center; justify-content:space-between; z-index:50; }
+    .save-msg { font-size:13px; color:var(--text2); }
+    .save-msg.ok  { color:var(--green); }
+    .save-msg.err { color:var(--red); }
+    .btn-save  { padding:9px 22px; background:var(--grad); border:none; border-radius:8px; font-family:var(--font-d); font-size:14px; font-weight:800; color:#fff; cursor:pointer; }
+    .btn-save:hover { opacity:.9; }
+    .btn-reset { padding:9px 16px; background:transparent; border:1px solid rgba(255,61,90,.25); border-radius:8px; font-size:13px; font-weight:700; color:rgba(255,61,90,.7); cursor:pointer; }
+    .btn-reset:hover { color:var(--red); background:rgba(255,61,90,.07); }
+
+    /* Preview */
+    .filter-row { display:flex; gap:10px; margin-bottom:1.25rem; flex-wrap:wrap; }
+    .btn-filter { padding:6px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:20px; font-size:12px; font-weight:700; color:var(--text2); cursor:pointer; }
+    .btn-filter.on { background:rgba(0,229,160,.12); color:var(--green); border-color:rgba(0,229,160,.35); }
+    .preview-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+    .preview-card { background:var(--bg2); border-radius:12px; padding:1.25rem; display:flex; flex-direction:column; gap:8px; }
+    .preview-card.challenge { border:1.5px solid rgba(26,140,255,.35); }
+    .preview-card.question  { border:1.5px solid rgba(199,125,255,.35); }
+    .pc-header { display:flex; align-items:center; justify-content:space-between; }
+    .pc-badge { font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:20px; }
+    .pc-badge.challenge { background:rgba(26,140,255,.15); color:var(--blue); border:1px solid rgba(26,140,255,.3); }
+    .pc-badge.question  { background:rgba(199,125,255,.15); color:var(--purple); border:1px solid rgba(199,125,255,.3); }
+    .pc-pts  { font-size:12px; font-weight:700; color:var(--green); }
+    .pc-text { font-size:15px; font-weight:700; color:var(--text); line-height:1.4; }
+    .pc-hint { font-size:12px; color:var(--text2); font-style:italic; }
+    .pc-answer { background:rgba(199,125,255,.07); border:1px solid rgba(199,125,255,.2); border-radius:8px; padding:7px 10px; }
+    .pc-answer-label { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; color:var(--purple); display:block; margin-bottom:2px; }
+    .pc-answer-text  { font-size:13px; font-weight:600; color:var(--text); }
+    .pc-time { font-size:10px; color:var(--text3); text-align:right; }
   </style>
 </head>
 <body>
-<canvas id="confetti-canvas"></canvas>
-<div id="app">
+<div class="admin-wrap">
 
-<!-- ══════════════════════════════════════════
-     ECRÃ: LOADING (visible while picker loads)
-══════════════════════════════════════════ -->
-<div id="screen-loading" class="screen active" style="align-items:center;justify-content:center;background:#060c18">
-  <img src="logo.png" style="height:80px;object-fit:contain;opacity:0.6" alt="">
-</div>
-
-<!-- ══════════════════════════════════════════
-     ECRÃ: JOGO
-══════════════════════════════════════════ -->
-<div id="screen-game" class="screen">
-  <header class="game-header">
-    <div class="hdr-left">
-      <img src="logo.png" class="hdr-logo" alt="">
-      <div class="hdr-team-wrap">
-        <img id="hdr-shop-logo" class="hdr-shop-logo" alt="" style="display:none">
-        <span id="hdr-team" class="hdr-team">—</span>
-      </div>
+  <header class="admin-header">
+    <div class="admin-brand">
+      <img src="logo.png" class="admin-logo" alt="">
+      <span class="admin-title">Coruche Digital — Admin</span>
     </div>
-    <div class="hdr-center">
-      <span id="hdr-round" class="round-badge r1">Ronda 1</span>
-      <span id="hdr-timer" class="timer">10:00</span>
-      <span id="hdr-warning" class="timer-warn"></span>
-    </div>
-    <div class="hdr-right">
-      <span id="hdr-points" class="hdr-points">0 pts</span>
-      <span id="hdr-throws" class="hdr-throws">0/0</span>
-      <button id="btn-pause" class="btn-pause" onclick="uiPause()">⏸ Pausa</button>
-      <a href="admin.html" class="btn-icon">⚙️</a>
-    </div>
+    <button class="btn-play" onclick="startNewGame()">▶ Novo Jogo</button>
   </header>
 
-  <div class="game-body">
-    <!-- Board (left ~62%) -->
-    <div class="board-area">
-      <div id="board-wrap">
-        <svg id="board-svg" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"></svg>
-      </div>
-      <div id="dice-section" class="dice-bar">
-        <span class="dice-label">Dado:</span>
-        <div class="die-btns">
-          <button class="die-btn" data-v="1" onclick="uiSelectDie(1)">1</button>
-          <button class="die-btn" data-v="2" onclick="uiSelectDie(2)">2</button>
-          <button class="die-btn" data-v="3" onclick="uiSelectDie(3)">3</button>
-          <button class="die-btn" data-v="4" onclick="uiSelectDie(4)">4</button>
-          <button class="die-btn" data-v="5" onclick="uiSelectDie(5)">5</button>
-          <button class="die-btn" data-v="6" onclick="uiSelectDie(6)">6</button>
-        </div>
-        <button id="btn-roll" class="btn-roll" onclick="uiRoll()" disabled>Avançar ▶</button>
-        <span id="dice-msg" class="dice-msg"></span>
-      </div>
-    </div>
+  <nav class="admin-tabs">
+    <button class="admin-tab on" data-tab="games"      onclick="tab('games')">🎮 Jogos</button>
+    <button class="admin-tab"    data-tab="shops"      onclick="tab('shops')">🏪 Lojas</button>
+    <button class="admin-tab"    data-tab="config"     onclick="tab('config')">⚙️ Config</button>
+    <button class="admin-tab"    data-tab="challenges" onclick="tab('challenges')">⚡ Desafios</button>
+    <button class="admin-tab"    data-tab="questions"  onclick="tab('questions')">❓ Perguntas</button>
+    <button class="admin-tab"    data-tab="preview"    onclick="tab('preview')">👁 Pré-ver</button>
+  </nav>
 
-    <!-- Ranking (right ~38%) -->
-    <aside class="ranking-panel">
-      <div class="ranking-header">
-        <span class="ranking-title">🏆 Classificação</span>
-        <span class="ranking-date" id="ranking-date"></span>
+  <main class="admin-body">
+
+    <!-- JOGOS -->
+    <section id="tab-games" class="admin-section on">
+      <h2 class="section-heading">Jogos de hoje</h2>
+      <p class="section-sub">Gere os jogos, remove inválidos e cria exemplos para motivar as primeiras equipas.</p>
+
+      <div style="display:flex;gap:10px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center">
+        <button class="btn-new-game" onclick="startNewGame()">▶ Iniciar novo jogo</button>
+        <button class="btn-clear-today" onclick="clearTodayGames()">🗑 Limpar jogos de hoje</button>
       </div>
-      <div id="ranking-list" class="ranking-list">
-        <div class="ranking-empty">Os resultados de hoje aparecem aqui</div>
-      </div>
-    </aside>
-  </div>
-</div>
 
-<!-- ══════════════════════════════════════════
-     ECRÃ: FIM
-══════════════════════════════════════════ -->
-<div id="screen-end" class="screen">
-  <div class="end-box">
-    <div id="end-emoji" class="end-emoji">🏆</div>
-    <h2 id="end-title" class="end-title">Missão cumprida!</h2>
-    <p id="end-team" class="end-team"></p>
-    <div id="end-team-count" class="end-team-count"></div>
-    <div class="end-stats">
-      <div class="stat-box">
-        <span id="end-time" class="stat-val">—</span>
-        <span class="stat-label">Tempo restante</span>
-      </div>
-      <div class="stat-box">
-        <span id="end-points" class="stat-val">0</span>
-        <span class="stat-label">Pontos</span>
-      </div>
-    </div>
-    <button class="btn-primary" onclick="uiNewTeam()">Voltar ao Admin 🏠</button>
-  </div>
-</div>
-
-</div><!-- #app -->
-
-<!-- ══════════════════════════════════════════
-     OVERLAY: SHOP PICKER
-══════════════════════════════════════════ -->
-<div id="overlay-picker" class="overlay" style="display:none">
-  <div class="picker-container">
-    <h2 class="picker-title">Escolhe o vosso símbolo!</h2>
-    <p class="picker-sub">Clica no logo da tua equipa</p>
-    <div id="shop-cards" class="shop-cards"></div>
-
-    <!-- Step 2: team name (hidden until logo chosen) -->
-    <div id="picker-name-step" style="display:none;text-align:center;width:100%">
-      <p class="picker-sub" style="margin-bottom:1rem">Qual é o nome da vossa equipa?</p>
-      <input id="picker-team-name" class="picker-team-input"
-        type="text" placeholder="Ex: Os Tubarões" maxlength="30"
-        onkeydown="if(event.key==='Enter') uiConfirmShop()">
-      <div class="picker-config" style="margin-top:1.25rem;justify-content:center">
-        <div class="picker-field">
-          <label>Nº de crianças</label>
-          <input id="picker-players" type="number" value="5" min="1" max="60">
-        </div>
-        <div class="picker-field">
-          <label>Tempo (min)</label>
-          <input id="picker-minutes" type="number" value="10" min="1" max="60">
-        </div>
-      </div>
-      <div style="display:flex;gap:12px;justify-content:center;margin-top:1rem">
-        <button class="btn-primary" style="width:auto;padding:12px 32px" onclick="uiConfirmShop()">Vamos jogar! 🚀</button>
-        <button onclick="uiCancelShopPick()"
-          style="padding:12px 20px;background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#7a90b8;cursor:pointer;font-size:14px">
-          ← Voltar
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     OVERLAY: PAUSA
-══════════════════════════════════════════ -->
-<div id="overlay-pause" class="overlay" style="display:none">
-  <div class="overlay-card">
-    <div class="ov-icon">⏸</div>
-    <h2 class="ov-title" style="color:#ffb347">Jogo em pausa</h2>
-    <p class="ov-sub">Cronómetro parado.</p>
-    <button class="btn-primary" onclick="uiPause()">▶ Continuar</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     OVERLAY: INÍCIO RONDA 2
-══════════════════════════════════════════ -->
-<div id="overlay-r2intro" class="overlay" style="display:none">
-  <div class="overlay-card">
-    <div class="ov-icon">🔥</div>
-    <h2 class="ov-title" style="color:#00e5a0">Ronda 2!</h2>
-    <p class="ov-sub">Agora são desafios e perguntas reais.</p>
-    <div class="r2intro-time-box">
-      <span class="r2intro-label">Tempo restante</span>
-      <span id="r2intro-time" class="r2intro-time">05:00</span>
-    </div>
-    <button id="btn-r2intro" class="btn-primary">Vamos lá! →</button>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     OVERLAY: R1 CARTAS
-══════════════════════════════════════════ -->
-<div id="overlay-r1" class="overlay" style="display:none">
-  <div class="r1-container">
-    <p class="r1-instruction">Escolhe uma carta!</p>
-    <div class="r1-cards">
-      <div id="r1-left" class="r1-card-wrap">
-        <div id="r1-left-inner" class="r1-card-inner">
-          <div class="r1-face back">
-            <img id="r1-left-img" src="card-question.png" alt="">
+      <!-- Fake game form -->
+      <div class="fake-form">
+        <h3>✨ Criar jogo de exemplo</h3>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:1rem">Cria resultados fictícios para que as primeiras equipas tenham um objetivo a bater.</p>
+        <div class="fake-row">
+          <div class="fake-field">
+            <label>Loja / Logo</label>
+            <select id="fake-shop"></select>
           </div>
-          <div class="r1-face front" id="r1-left-front"></div>
-        </div>
-      </div>
-      <div id="r1-right" class="r1-card-wrap">
-        <div id="r1-right-inner" class="r1-card-inner">
-          <div class="r1-face back">
-            <img id="r1-right-img" src="card-challenge.png" alt="">
+          <div class="fake-field">
+            <label>Nome da equipa</label>
+            <input id="fake-team-name" type="text" value="Os Campeões" style="width:160px" placeholder="Nome da equipa">
           </div>
-          <div class="r1-face front" id="r1-right-front"></div>
+          <div class="fake-field">
+            <label>Pontos</label>
+            <input id="fake-points" type="number" value="80" min="0" max="9999" style="width:100px">
+          </div>
+          <div class="fake-field">
+            <label>Tempo restante (s)</label>
+            <input id="fake-secs" type="number" value="180" min="0" max="3600" style="width:120px">
+          </div>
+          <button class="btn-add-fake" onclick="addFakeGame()">+ Adicionar exemplo</button>
         </div>
       </div>
-    </div>
-    <p id="r1-result" class="r1-result"></p>
-    <button id="btn-r1-next" class="btn-primary" style="display:none">Continuar →</button>
-  </div>
-</div>
 
-<!-- ══════════════════════════════════════════
-     OVERLAY: R2 CARD
-══════════════════════════════════════════ -->
-<div id="overlay-r2" class="overlay" style="display:none">
-  <div id="r2-card-box" class="r2-card-box challenge">
-    <div class="r2-timer-ring">
-      <svg viewBox="0 0 110 110" width="90" height="90">
-        <circle cx="55" cy="55" r="50" fill="none" stroke="#1e2a3d" stroke-width="8"/>
-        <circle id="r2-timer-arc" cx="55" cy="55" r="50" fill="none"
-          stroke="#1a8cff" stroke-width="8" stroke-linecap="round"
-          stroke-dasharray="314.16" stroke-dashoffset="0"
-          transform="rotate(-90 55 55)"/>
-      </svg>
-      <span id="r2-secs" class="r2-secs">30</span>
-    </div>
-    <span id="r2-deck-label" class="r2-deck-label">⚡ Desafio</span>
-    <p id="r2-card-text" class="r2-card-text">Texto</p>
-    <p id="r2-card-hint" class="r2-card-hint"></p>
-    <p id="r2-card-pts"  class="r2-card-pts">+20 pontos</p>
-    <div id="r2-answer-box" class="r2-answer-box" style="display:none">
-      <span class="r2-answer-label">Resposta:</span>
-      <span id="r2-answer-text" class="r2-answer-text"></span>
-    </div>
-    <p id="r2-result-text" class="r2-result"></p>
-    <div class="r2-btns">
-      <button id="btn-r2-done"   class="btn-done"   onclick="r2ChallengeDone()">✓ Feito!</button>
-      <button id="btn-r2-reveal" class="btn-reveal"  onclick="uiRevealAnswer()">👁 Ver resposta</button>
-      <button id="btn-r2-repeat" class="btn-repeat"  onclick="repeatCard()">🔁 Repetir</button>
-      <div    id="r2-answer-btns" class="answer-btns"></div>
-      <button id="btn-r2-close"  class="btn-primary" style="display:none">Continuar →</button>
-    </div>
-  </div>
-</div>
+      <div id="games-box"></div>
+    </section>
 
-<!-- ══════════════════════════════════════════
-     OVERLAY: RODA DE NOVO
-══════════════════════════════════════════ -->
-<div id="overlay-again" class="overlay" style="display:none">
-  <div class="overlay-card">
-    <div class="ov-icon">🎲</div>
-    <h2 class="ov-title" style="color:#00e5a0">Roda de novo!</h2>
-    <p class="ov-sub">A equipa lança o dado mais uma vez!</p>
-    <button id="btn-again" class="btn-primary">Lançar →</button>
+    <!-- LOJAS -->
+    <section id="tab-shops" class="admin-section">
+      <h2 class="section-heading">Lojas participantes</h2>
+      <p class="section-sub">Logos das lojas que participam. São sorteados 3 aleatoriamente no início de cada jogo.</p>
+
+      <div id="add-shop-form" class="add-shop-form">
+        <div class="form-row-inline">
+          <div class="form-field">
+            <label>Nome da loja</label>
+            <input id="new-shop-name" type="text" placeholder="Ex: Papelaria Central">
+          </div>
+          <div class="form-field">
+            <label>Logo da loja</label>
+            <input id="new-logo" type="file" accept="image/*" onchange="previewLogo(this)">
+            <img id="logo-preview" class="logo-preview" alt="">
+          </div>
+          <button class="btn-save-shop" onclick="saveNewShop()">Guardar</button>
+          <button class="btn-cancel-shop" onclick="toggleAddForm(false)">Cancelar</button>
+        </div>
+      </div>
+
+      <button class="btn-add-shop" onclick="toggleAddForm(true)" style="margin-bottom:1.5rem">+ Adicionar loja</button>
+
+      <div id="shops-grid" class="shops-grid"></div>
+
+      <div style="margin-top:1rem">
+        <button class="btn-clear-today" onclick="resetUsedShops()">↺ Repor sorteio</button>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section id="tab-config" class="admin-section">
+      <h2 class="section-heading">Configurações</h2>
+
+      <!-- Theme toggle -->
+      <div class="theme-toggle-row">
+        <span class="theme-label">Tema do jogo</span>
+        <div class="theme-options">
+          <button id="theme-dark"  class="theme-btn on" onclick="setTheme('dark')">🌙 Escuro</button>
+          <button id="theme-light" class="theme-btn"    onclick="setTheme('light')">☀️ Claro</button>
+        </div>
+      </div>
+
+      <div class="cfg-grid">
+        <div class="cfg-box"><label>Tempo do jogo (min)</label><input id="c-mins" type="number" min="1" max="60"></div>
+        <div class="cfg-box"><label>Crianças por equipa</label><input id="c-players" type="number" min="1" max="60"></div>
+        <div class="cfg-box"><label>Tempo por card R2 (s)</label><input id="c-cardtime" type="number" min="5" max="120"></div>
+        <div class="cfg-box"><label>Aviso amarelo (s restantes)</label><input id="c-warn" type="number" min="30"></div>
+        <div class="cfg-box"><label>Aviso vermelho (s restantes)</label><input id="c-danger" type="number" min="5"></div>
+      </div>
+      <h3 style="font-size:14px;font-weight:700;color:var(--text2);margin:1rem 0 .75rem">Ronda 1 — Cartas de Tempo</h3>
+      <div class="cfg-grid">
+        <div class="cfg-box"><label>Ganho mínimo (s)</label><input id="c-pmin" type="number" min="5"></div>
+        <div class="cfg-box"><label>Ganho máximo (s)</label><input id="c-pmax" type="number" min="5"></div>
+        <div class="cfg-box"><label>Perda mínima (s)</label><input id="c-mmin" type="number" min="5"></div>
+        <div class="cfg-box"><label>Perda máxima (s)</label><input id="c-mmax" type="number" min="5"></div>
+      </div>
+      <h3 style="font-size:14px;font-weight:700;color:var(--text2);margin:1rem 0 .75rem">Ronda 2 — Pontos</h3>
+      <div class="cfg-grid">
+        <div class="cfg-box"><label>Pontos por desafio</label><input id="c-pchall" type="number" min="0"></div>
+        <div class="cfg-box"><label>Pontos por pergunta certa</label><input id="c-pques" type="number" min="0"></div>
+      </div>
+    </section>
+
+    <!-- DESAFIOS -->
+    <section id="tab-challenges" class="admin-section">
+      <h2 class="section-heading">Desafios <span style="font-size:13px;font-weight:400;color:var(--text2)">Ronda 2 · casa ⚡</span></h2>
+      <div id="list-challenges" class="item-list"></div>
+      <button class="btn-add" onclick="addChallenge()">+ Adicionar desafio</button>
+    </section>
+
+    <!-- PERGUNTAS -->
+    <section id="tab-questions" class="admin-section">
+      <h2 class="section-heading">Perguntas <span style="font-size:13px;font-weight:400;color:var(--text2)">Ronda 2 · casa ❓</span></h2>
+      <div id="list-questions" class="item-list"></div>
+      <button class="btn-add" onclick="addQuestion()">+ Adicionar pergunta</button>
+    </section>
+
+    <!-- PRÉ-VER -->
+    <section id="tab-preview" class="admin-section">
+      <h2 class="section-heading">Pré-visualizar cards</h2>
+      <div class="filter-row">
+        <button class="btn-filter on" data-f="all"       onclick="setFilter('all')">Todos</button>
+        <button class="btn-filter"    data-f="challenge" onclick="setFilter('challenge')">⚡ Desafios</button>
+        <button class="btn-filter"    data-f="question"  onclick="setFilter('question')">❓ Perguntas</button>
+      </div>
+      <div id="preview-grid" class="preview-grid"></div>
+    </section>
+
+  </main>
+
+  <div class="admin-bar">
+    <span id="save-msg" class="save-msg"></span>
+    <div style="display:flex;gap:8px">
+      <button class="btn-reset" onclick="resetAll()">Repor padrão</button>
+      <button class="btn-save"  onclick="saveAll()">Guardar</button>
+    </div>
   </div>
 </div>
 
 <script src="state.js"></script>
-<script src="game.js"></script>
-<script src="ui.js"></script>
 <script>
+// ── Admin State
+let AC = { cfg:null, challenges:null, questions:null, shops:null };
+let currentFilter = 'all';
+let newLogoBase64 = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-  // Set today's date in ranking header
-  const dateEl = document.getElementById('ranking-date');
-  if (dateEl) dateEl.textContent = new Date().toLocaleDateString('pt-PT');
-  gameInit();
-  window.addEventListener('resize', () => UI.drawBoard());
-  // Redraw board when theme changes
-  new MutationObserver(() => UI.drawBoard())
-    .observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
-  // Keyboard shortcuts
-  document.addEventListener('keydown', e => {
-    const n = parseInt(e.key);
-    if (n >= 1 && n <= 6) uiSelectDie(n);
-    if (e.key === 'Enter') {
-      const btn = document.getElementById('btn-roll');
-      if (btn && !btn.disabled) uiRoll();
-    }
-    if (e.key === ' ') { e.preventDefault(); uiPause(); }
-  });
+  AC.cfg        = DB.loadConfig();
+  AC.challenges = DB.loadChallenges();
+  AC.questions  = DB.loadQuestions();
+  AC.shops      = [];
+  loadTheme();
+  renderConfig(); renderChallenges(); renderQuestions();
+  renderShops(); renderGames(); renderPreview(); renderFakeShopSelect();
 });
+
+// ── Navigation
+function tab(name) {
+  document.querySelectorAll('.admin-tab').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.toggle('on', s.id === 'tab-' + name));
+  if (name === 'preview') renderPreview();
+  if (name === 'games')   renderGames();
+}
+
+function startNewGame() {
+  // Save current config first, then go to game
+  saveAll(true);
+  window.location.href = 'index.html';
+}
+
+// ── Config
+function renderConfig() {
+  const c = AC.cfg;
+  sv('c-mins',    c.gameMinutes);    sv('c-players', c.playersPerTeam);
+  sv('c-cardtime',c.cardTime);       sv('c-warn',    c.warningSeconds);
+  sv('c-danger',  c.dangerSeconds);  sv('c-pmin',    c.r1PlusMin);
+  sv('c-pmax',    c.r1PlusMax);      sv('c-mmin',    c.r1MinusMin);
+  sv('c-mmax',    c.r1MinusMax);     sv('c-pchall',  c.pointsChallenge);
+  sv('c-pques',   c.pointsQuestion);
+}
+
+// ── Shops
+async function renderShops() {
+  const grid = document.getElementById('shops-grid');
+  grid.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:1rem">A carregar...</p>';
+  AC.shops = await DB.loadShops();
+  if (!AC.shops.length) {
+    grid.innerHTML = '<p style="color:var(--text3);font-size:13px">Sem lojas. Adiciona a primeira!</p>';
+    renderFakeShopSelect();
+    return;
+  }
+  grid.innerHTML = AC.shops.map(s => `
+    <div class="shop-item">
+      <button class="shop-item-del" onclick="delShop(${s.id})">✕</button>
+      <img src="${s.logo || 'logo.png'}" class="shop-item-logo" alt="">
+      <div class="shop-item-name">${e(s.name)}</div>
+    </div>`).join('');
+  renderFakeShopSelect();
+}
+
+
+function toggleAddForm(open) {
+  document.getElementById('add-shop-form').classList.toggle('open', open);
+  if (!open) {
+    document.getElementById('new-shop-name').value = '';
+    const prev = document.getElementById('logo-preview');
+    if (prev) prev.style.display = 'none';
+    newLogoBase64 = null;
+  }
+}
+
+function previewLogo(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    newLogoBase64 = e.target.result;
+    const prev = document.getElementById('logo-preview');
+    prev.src = newLogoBase64; prev.style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveNewShop() {
+  const name = document.getElementById('new-shop-name').value.trim();
+  if (!name) { alert('Preenche o nome da loja.'); return; }
+  if (!newLogoBase64) { alert('Carrega o logo da loja.'); return; }
+  const btn = document.querySelector('.btn-save-shop');
+  btn.disabled = true; btn.textContent = 'A guardar...';
+  await DB.addShop({ name, ownerName: name, logo: newLogoBase64 });
+  btn.disabled = false; btn.textContent = 'Guardar';
+  await renderShops();
+  toggleAddForm(false);
+  msg('Loja adicionada!', false);
+}
+
+async function delShop(id) {
+  if (!confirm('Remover esta loja?')) return;
+  await DB.deleteShop(id);
+  renderShops();
+}
+
+function resetUsedShops() {
+  DB.resetUsedShops();
+  msg('Sorteio reposto — todas as lojas voltam a estar disponíveis.', false);
+}
+
+// ── Games
+async function renderGames() {
+  const games = await DB.loadGames();
+  const box   = document.getElementById('games-box');
+  if (!games.length) { box.innerHTML='<div class="empty-msg">Sem jogos registados ainda.</div>'; return; }
+  const rows = games.map(g => {
+    const d   = new Date(g.ts);
+    const tl  = Math.max(0,g.secsLeft||0);
+    const mm  = String(Math.floor(tl/60)).padStart(2,'0');
+    const ss  = String(tl%60).padStart(2,'0');
+    return `<tr>
+      <td>
+        ${g.shopLogo ? `<img src="${g.shopLogo}" class="game-logo">` : ''}
+        ${e(g.teamName)} ${g.fake ? '<span class="badge-fake">exemplo</span>' : ''}
+      </td>
+      <td class="${g.completed?'badge-ok':'badge-out'}">${g.completed?'✓ Completo':'⏰ Esgotado'}</td>
+      <td style="font-family:var(--font-d);font-weight:800;color:var(--gold)">${g.points||0}</td>
+      <td>${g.completed ? mm+':'+ss : '—'}</td>
+      <td style="color:var(--text3)">${d.toLocaleTimeString('pt-PT',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td><button class="btn-del-game" onclick="delGame(${g.id})">Apagar</button></td>
+    </tr>`;
+  }).join('');
+  box.innerHTML = `<table class="games-table">
+    <thead><tr><th>Equipa</th><th>Estado</th><th>Pontos</th><th>Tempo</th><th>Hora</th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+async function delGame(id) {
+  if (!confirm('Apagar este jogo do ranking?')) return;
+  await DB.deleteGame(id); renderGames();
+}
+
+async function clearTodayGames() {
+  if (!confirm('Apagar todos os jogos de hoje?')) return;
+  const today = new Date().toDateString();
+  const all   = await DB.loadGames();
+  for (const g of all.filter(x => new Date(x.ts).toDateString() === today)) {
+    await DB.deleteGame(g.id);
+  }
+  renderGames();
+}
+
+function renderFakeShopSelect() {
+  const sel = document.getElementById('fake-shop');
+  if (!sel) return;
+  sel.innerHTML = AC.shops.map(s => `<option value="${s.id}">${e(s.name)}</option>`).join('');
+}
+
+async function addFakeGame() {
+  const shopId = parseInt(document.getElementById('fake-shop').value);
+  const points = parseInt(document.getElementById('fake-points').value) || 0;
+  const secs   = parseInt(document.getElementById('fake-secs').value)   || 0;
+  const shop   = AC.shops.find(s => s.id === shopId);
+  if (!shop) { alert('Escolhe uma loja.'); return; }
+  const owner    = shop.ownerName;
+  const teamName = document.getElementById('fake-team-name').value.trim() || 'Os Campeões';
+  await DB.addGame({ shopId, shopName:shop.name, shopLogo:shop.logo, teamName, ownerName:owner, players:0, completed:true, secsLeft:secs, points, fake:true });
+  renderGames(); msg('Jogo de exemplo criado!', false);
+}
+
+// ── Challenges
+function renderChallenges() {
+  document.getElementById('list-challenges').innerHTML =
+    AC.challenges.map((ch,i) => `
+      <div class="item-row">
+        <span class="item-num">${i+1}</span>
+        <div class="item-body">
+          <input type="text" placeholder="Desafio" value="${e(ch.text)}" oninput="AC.challenges[${i}].text=this.value">
+          <input type="text" placeholder="Dica" value="${e(ch.hint||'')}" oninput="AC.challenges[${i}].hint=this.value">
+        </div>
+        <button class="btn-del" onclick="delChallenge(${i})">✕</button>
+      </div>`).join('');
+}
+function addChallenge() { const m=AC.challenges.reduce((x,c)=>Math.max(x,c.id),0); AC.challenges.push({id:m+1,text:'Novo desafio',hint:''}); renderChallenges(); }
+function delChallenge(i) { if(AC.challenges.length<=1){msg('Mínimo 1.',true);return;} AC.challenges.splice(i,1); renderChallenges(); }
+
+// ── Questions
+function renderQuestions() {
+  document.getElementById('list-questions').innerHTML =
+    AC.questions.map((q,i) => `
+      <div class="item-row">
+        <span class="item-num">${i+1}</span>
+        <div class="item-body">
+          <input type="text" placeholder="Pergunta" value="${e(q.text)}" oninput="AC.questions[${i}].text=this.value">
+          <input type="text" placeholder="Resposta" value="${e(q.answer)}" oninput="AC.questions[${i}].answer=this.value">
+        </div>
+        <button class="btn-del" onclick="delQuestion(${i})">✕</button>
+      </div>`).join('');
+}
+function addQuestion() { const m=AC.questions.reduce((x,q)=>Math.max(x,q.id),0); AC.questions.push({id:m+1,text:'Nova pergunta',answer:'Resposta'}); renderQuestions(); }
+function delQuestion(i) { if(AC.questions.length<=1){msg('Mínimo 1.',true);return;} AC.questions.splice(i,1); renderQuestions(); }
+
+// ── Preview
+function setFilter(f) {
+  currentFilter=f;
+  document.querySelectorAll('.btn-filter').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
+  renderPreview();
+}
+function renderPreview() {
+  const cfg=AC.cfg; let html='';
+  if(currentFilter!=='question') AC.challenges.forEach((ch,i)=>{
+    html+=`<div class="preview-card challenge"><div class="pc-header"><span class="pc-badge challenge">⚡ Desafio ${i+1}</span><span class="pc-pts">+${cfg.pointsChallenge}pts</span></div><p class="pc-text">${e(ch.text)}</p>${ch.hint?`<p class="pc-hint">${e(ch.hint)}</p>`:''}<p class="pc-time">⏱ ${cfg.cardTime}s</p></div>`;
+  });
+  if(currentFilter!=='challenge') AC.questions.forEach((q,i)=>{
+    html+=`<div class="preview-card question"><div class="pc-header"><span class="pc-badge question">❓ Pergunta ${i+1}</span><span class="pc-pts">+${cfg.pointsQuestion}pts</span></div><p class="pc-text">${e(q.text)}</p><div class="pc-answer"><span class="pc-answer-label">Resposta</span><span class="pc-answer-text">${e(q.answer)}</span></div><p class="pc-time">⏱ ${cfg.cardTime}s</p></div>`;
+  });
+  document.getElementById('preview-grid').innerHTML = html || '<p style="color:var(--text3);padding:1rem">Sem cards.</p>';
+}
+
+// ── Save / Reset
+// ── Theme ────────────────────────────────────────────────
+function setTheme(theme) {
+  localStorage.setItem('crd_theme', theme);
+  document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
+  document.getElementById('theme-dark').classList.toggle('on',  theme === 'dark');
+  document.getElementById('theme-light').classList.toggle('on', theme === 'light');
+}
+
+function loadTheme() {
+  const t = localStorage.getItem('crd_theme') || 'dark';
+  setTheme(t);
+}
+
+function saveAll(silent) {
+  AC.cfg.gameMinutes    = iv('c-mins',10);    AC.cfg.playersPerTeam = iv('c-players',5);
+  AC.cfg.cardTime       = iv('c-cardtime',30); AC.cfg.warningSeconds = iv('c-warn',120);
+  AC.cfg.dangerSeconds  = iv('c-danger',30);   AC.cfg.r1PlusMin      = iv('c-pmin',15);
+  AC.cfg.r1PlusMax      = iv('c-pmax',60);     AC.cfg.r1MinusMin     = iv('c-mmin',10);
+  AC.cfg.r1MinusMax     = iv('c-mmax',30);     AC.cfg.pointsChallenge= iv('c-pchall',20);
+  AC.cfg.pointsQuestion = iv('c-pques',10);
+  DB.saveConfig(AC.cfg); DB.saveChallenges(AC.challenges);
+  DB.saveQuestions(AC.questions);
+  // shops are saved per-item to Supabase — no batch save needed
+  if (!silent) msg('Guardado!', false);
+}
+function resetAll() {
+  if(!confirm('Repor tudo (não apaga jogos)?')) return;
+  DB.resetAll(); AC.cfg=DB.loadConfig(); AC.challenges=DB.loadChallenges(); AC.questions=DB.loadQuestions();
+  renderConfig(); renderChallenges(); renderQuestions(); renderShops(); renderPreview();
+  msg('Valores repostos.',false);
+}
+
+function msg(text,isErr) { const el=document.getElementById('save-msg'); el.textContent=text; el.className='save-msg '+(isErr?'err':'ok'); setTimeout(()=>{el.textContent='';el.className='save-msg';},3000); }
+function sv(id,val) { const el=document.getElementById(id); if(el) el.value=val; }
+function iv(id,def) { const el=document.getElementById(id); return el?(parseInt(el.value)||def):def; }
+function e(s)  { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>

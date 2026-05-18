@@ -24,7 +24,7 @@
 <!-- ══════════════════════════════════════════
      ECRÃ: LOADING (visible while picker loads)
 ══════════════════════════════════════════ -->
-<div id="screen-loading" class="screen active" style="align-items:center;justify-content:center;background:#060c18">
+<div id="screen-loading" class="screen active" style="align-items:center;justify-content:center;background:var(--bg)">
   <img src="logo.png" style="height:80px;object-fit:contain;opacity:0.6" alt="">
 </div>
 
@@ -57,7 +57,7 @@
     <!-- Board (left ~62%) -->
     <div class="board-area">
       <div id="board-wrap">
-        <svg id="board-svg" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%"></svg>
+        <svg id="board-svg" xmlns="http://www.w3.org/2000/svg"></svg>
       </div>
       <div id="dice-section" class="dice-bar">
         <span class="dice-label">Dado:</span>
@@ -140,7 +140,7 @@
       <div style="display:flex;gap:12px;justify-content:center;margin-top:1rem">
         <button class="btn-primary" style="width:auto;padding:12px 32px" onclick="uiConfirmShop()">Vamos jogar! 🚀</button>
         <button onclick="uiCancelShopPick()"
-          style="padding:12px 20px;background:transparent;border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#7a90b8;cursor:pointer;font-size:14px">
+          class="btn-cancel-picker">
           ← Voltar
         </button>
       </div>
@@ -154,7 +154,7 @@
 <div id="overlay-pause" class="overlay" style="display:none">
   <div class="overlay-card">
     <div class="ov-icon">⏸</div>
-    <h2 class="ov-title" style="color:#ffb347">Jogo em pausa</h2>
+    <h2 class="ov-title" style="color:var(--orange)">Jogo em pausa</h2>
     <p class="ov-sub">Cronómetro parado.</p>
     <button class="btn-primary" onclick="uiPause()">▶ Continuar</button>
   </div>
@@ -166,7 +166,7 @@
 <div id="overlay-r2intro" class="overlay" style="display:none">
   <div class="overlay-card">
     <div class="ov-icon">🔥</div>
-    <h2 class="ov-title" style="color:#00e5a0">Ronda 2!</h2>
+    <h2 class="ov-title" style="color:var(--green)">Ronda 2!</h2>
     <p class="ov-sub">Agora são desafios e perguntas reais.</p>
     <div class="r2intro-time-box">
       <span class="r2intro-label">Tempo restante</span>
@@ -245,7 +245,7 @@
 <div id="overlay-again" class="overlay" style="display:none">
   <div class="overlay-card">
     <div class="ov-icon">🎲</div>
-    <h2 class="ov-title" style="color:#00e5a0">Roda de novo!</h2>
+    <h2 class="ov-title" style="color:var(--green)">Roda de novo!</h2>
     <p class="ov-sub">A equipa lança o dado mais uma vez!</p>
     <button id="btn-again" class="btn-primary">Lançar →</button>
   </div>
@@ -261,6 +261,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (dateEl) dateEl.textContent = new Date().toLocaleDateString('pt-PT');
   gameInit();
   window.addEventListener('resize', () => UI.drawBoard());
+  // Redraw board when theme changes
+  new MutationObserver(() => UI.drawBoard())
+    .observe(document.documentElement, { attributes:true, attributeFilter:['data-theme'] });
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     const n = parseInt(e.key);

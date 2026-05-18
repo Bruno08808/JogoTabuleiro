@@ -211,7 +211,7 @@ const UI = {
     }).join('');
 
     // Center area with UNO-style cards
-    const centerHTML = this._centerHTML(ix, iy, iw, ih, cx, cy);
+    const centerHTML = this._centerHTML(ix, iy, iw, ih, cx, cy, isLight);
 
     return `
       <rect x="0" y="0" width="${VB}" height="${VB}" fill="${isLight ? '#dce6ff' : '#080d1a'}"/>
@@ -221,7 +221,7 @@ const UI = {
     `;
   },
 
-  _centerHTML(ix, iy, iw, ih, cx, cy) {
+  _centerHTML(ix, iy, iw, ih, cx, cy, isLight) {
     // Logo top-center, subtle
     const logoW = Math.round(iw * 0.38);
     const logoH = Math.round(logoW * 0.44);
