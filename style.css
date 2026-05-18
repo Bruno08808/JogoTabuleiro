@@ -121,7 +121,56 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:v
 .ranking-date  { font-size:11px; color:var(--text3); }
 .ranking-list  { flex:1; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:6px; }
 .ranking-empty { text-align:center; padding:2rem 1rem; color:var(--text3); font-size:13px; line-height:1.6; }
-.ranking-row { display:flex; align-items:center; gap:10px; background:var(--bg3); border:1px solid var(--border); border-radius:12px; padding:8px 12px; position:relative; overflow:hidden; transition:all .3s; }
+.ranking-row {
+  display:flex; align-items:center; gap:10px;
+  background:var(--bg3); border:1px solid var(--border);
+  border-radius:12px; padding:8px 12px;
+  position:relative; overflow:hidden;
+  transition: transform .4s cubic-bezier(.4,0,.2,1),
+              box-shadow .3s ease,
+              border-color .3s ease,
+              background .3s ease;
+}
+
+/* Current team — highlighted, always visible */
+.ranking-row.current-team {
+  border-color: var(--green) !important;
+  background: rgba(0,229,160,0.08) !important;
+  box-shadow: 0 0 0 2px rgba(0,229,160,0.25), 0 4px 20px rgba(0,229,160,0.15);
+}
+.ranking-row.current-team::before { background: var(--green) !important; }
+
+/* Score bump animation */
+@keyframes scoreBump {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.04); box-shadow: 0 0 0 3px rgba(0,229,160,0.5), 0 8px 30px rgba(0,229,160,0.3); }
+  100% { transform: scale(1); }
+}
+.ranking-row.score-bump {
+  animation: scoreBump .5s cubic-bezier(.4,0,.2,1);
+}
+
+/* Move up animation */
+@keyframes moveUp {
+  0%   { transform: translateY(8px); opacity:.7; }
+  100% { transform: translateY(0);   opacity:1; }
+}
+.ranking-row.moving-up {
+  animation: moveUp .4s cubic-bezier(.4,0,.2,1);
+}
+
+/* Live tag */
+.rank-live-tag {
+  display:inline-block; font-size:9px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.08em;
+  color:#fff; background:var(--green);
+  border-radius:4px; padding:1px 5px; margin-left:4px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity:1; }
+  50%       { opacity:.5; }
+}
 .ranking-row::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--grad); }
 .ranking-row:nth-child(1) { border-color:rgba(255,215,0,.4); background:rgba(255,215,0,.06); }
 .ranking-row:nth-child(1)::before { background:#ffd700; }

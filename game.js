@@ -48,6 +48,7 @@ function gamePickShop(shop, teamName, totalPlayers, minutes) {
   // Mark shop as used today
   DB.markShopUsed(shop.id);
 
+  UI._gameEnded = false;
   UI.showScreen('game');
   UI.updateHeader();
   UI.updateRanking();
@@ -143,12 +144,17 @@ function r2ChallengeDone() {
   stopCardTimer();
   G.points += G.cfg.pointsChallenge;
   UI.updatePoints();
+  UI._renderRanking(document.getElementById('ranking-list')); // live update
   UI.showCardResult(true, G.cfg.pointsChallenge, () => afterThrow());
 }
 
 function r2QuestionAnswer(correct) {
   stopCardTimer();
-  if (correct) { G.points += G.cfg.pointsQuestion; UI.updatePoints(); }
+  if (correct) {
+    G.points += G.cfg.pointsQuestion;
+    UI.updatePoints();
+    UI._renderRanking(document.getElementById('ranking-list')); // live update
+  }
   UI.showCardResult(correct, correct ? G.cfg.pointsQuestion : 0, () => afterThrow());
 }
 
@@ -183,6 +189,7 @@ async function gameEnd(completed) {
   if (G._timerInterval) clearInterval(G._timerInterval);
   stopCardTimer();
   G.timerRunning = false;
+  UI._gameEnded = true; // remove live entry from ranking
 
   await DB.addGame({
     shopId:    G.shopId,
@@ -197,7 +204,7 @@ async function gameEnd(completed) {
     fake:      false,
   });
 
-  await UI.updateRanking();
+  await UI.refreshRanking(); // force fresh load from Supabase
   UI.showEnd();
 }
 
