@@ -153,7 +153,15 @@
       <img src="logo.png" class="admin-logo" alt="">
       <span class="admin-title">Coruche Digital — Admin</span>
     </div>
-    <button class="btn-play" onclick="startNewGame()">▶ Novo Jogo</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <!-- Resume group — only visible when a game is paused -->
+      <div id="resume-group" style="display:none;align-items:center;gap:6px;background:rgba(0,229,160,0.1);border:1px solid rgba(0,229,160,0.3);border-radius:10px;padding:6px 10px">
+        <span id="banner-info" style="font-size:11px;color:var(--green);font-weight:700"></span>
+        <a href="index.html" class="btn-play" style="padding:6px 14px;font-size:12px;background:linear-gradient(135deg,#00b37d,#00e5a0)">🎮 Continuar</a>
+        <button onclick="discardGame()" style="padding:5px 10px;background:transparent;border:1px solid rgba(255,61,90,.3);border-radius:7px;font-size:11px;font-weight:700;color:rgba(255,61,90,.7);cursor:pointer">✕</button>
+      </div>
+      <button class="btn-play" onclick="startNewGame()">▶ Novo Jogo</button>
+    </div>
   </header>
 
   <nav class="admin-tabs">
@@ -312,15 +320,43 @@ let AC = { cfg:null, challenges:null, questions:null, shops:null };
 let currentFilter = 'all';
 let newLogoBase64 = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   AC.cfg        = DB.loadConfig();
   AC.challenges = DB.loadChallenges();
-  AC.questions  = DB.loadQuestions();
+  AC.questions  = await DB.loadQuestions();
   AC.shops      = [];
   loadTheme();
   renderConfig(); renderChallenges(); renderQuestions();
   renderShops(); renderGames(); renderPreview(); renderFakeShopSelect();
+  checkActiveGame();
 });
+
+function checkActiveGame() {
+  const raw   = localStorage.getItem('crd_active_game');
+  const group = document.getElementById('resume-group');
+  if (!raw || !group) return;
+  try {
+    const snap = JSON.parse(raw);
+    if (!snap.teamName || snap.secsLeft <= 0) {
+      localStorage.removeItem('crd_active_game');
+      return;
+    }
+    const mm   = String(Math.floor(snap.secsLeft / 60)).padStart(2, '0');
+    const ss   = String(snap.secsLeft % 60).padStart(2, '0');
+    const info = document.getElementById('banner-info');
+    if (info) info.textContent = snap.teamName + ' · ' + snap.points + ' pts · ' + mm + ':' + ss;
+    group.style.display = 'flex';
+  } catch(e) {
+    localStorage.removeItem('crd_active_game');
+  }
+}
+
+function discardGame() {
+  if (!confirm('Descartar o jogo em curso?')) return;
+  localStorage.removeItem('crd_active_game');
+  const group = document.getElementById('resume-group');
+  if (group) group.style.display = 'none';
+}
 
 // ── Navigation
 function tab(name) {
@@ -331,7 +367,8 @@ function tab(name) {
 }
 
 function startNewGame() {
-  // Save current config first, then go to game
+  // Clear any interrupted game — this is a fresh start
+  localStorage.removeItem('crd_active_game');
   saveAll(true);
   window.location.href = 'index.html';
 }
@@ -492,19 +529,35 @@ function delChallenge(i) { if(AC.challenges.length<=1){msg('Mínimo 1.',true);re
 
 // ── Questions
 function renderQuestions() {
+  if (!AC.questions || !AC.questions.length) {
+    document.getElementById('list-questions').innerHTML = '<p style="color:var(--text3);padding:1rem">Sem perguntas. As perguntas são geridas no Supabase.</p>';
+    return;
+  }
   document.getElementById('list-questions').innerHTML =
-    AC.questions.map((q,i) => `
-      <div class="item-row">
-        <span class="item-num">${i+1}</span>
-        <div class="item-body">
-          <input type="text" placeholder="Pergunta" value="${e(q.text)}" oninput="AC.questions[${i}].text=this.value">
-          <input type="text" placeholder="Resposta" value="${e(q.answer)}" oninput="AC.questions[${i}].answer=this.value">
-        </div>
-        <button class="btn-del" onclick="delQuestion(${i})">✕</button>
-      </div>`).join('');
+    AC.questions.map((q, i) => {
+      const typeLabel = q.type === 'numeric' ? '🔢 Numérica' : '🔤 Múltipla escolha';
+      return '<div class="item-row">'
+        + '<span class="item-num">' + (i+1) + '</span>'
+        + '<div class="item-body">'
+        + '<div style="display:flex;gap:8px;align-items:center">'
+        + '<span style="font-size:10px;font-weight:800;color:var(--purple);background:rgba(199,125,255,.12);border:1px solid rgba(199,125,255,.3);border-radius:6px;padding:2px 7px">' + typeLabel + '</span>'
+        + '</div>'
+        + '<input type="text" placeholder="Pergunta" value="' + e(q.text) + '" oninput="AC.questions[' + i + '].text=this.value">'
+        + (q.type === 'numeric'
+          ? '<input type="number" placeholder="Resposta correcta" value="' + (q.answer_number||'') + '" oninput="AC.questions[' + i + '].answer_number=parseInt(this.value)">'
+          : '<div style="font-size:11px;color:var(--text2);padding:4px 0">Opções editáveis no Supabase</div>')
+        + '</div>'
+        + '<button class="btn-del" onclick="delQuestion(' + q.id + ')">✕</button>'
+        + '</div>';
+    }).join('');
 }
-function addQuestion() { const m=AC.questions.reduce((x,q)=>Math.max(x,q.id),0); AC.questions.push({id:m+1,text:'Nova pergunta',answer:'Resposta'}); renderQuestions(); }
-function delQuestion(i) { if(AC.questions.length<=1){msg('Mínimo 1.',true);return;} AC.questions.splice(i,1); renderQuestions(); }
+async function delQuestion(id) {
+  if (!confirm('Apagar esta pergunta?')) return;
+  await DB.deleteQuestion(id);
+  AC.questions = await DB.loadQuestions();
+  renderQuestions();
+  renderPreview();
+}
 
 // ── Preview
 function setFilter(f) {
@@ -518,7 +571,14 @@ function renderPreview() {
     html+=`<div class="preview-card challenge"><div class="pc-header"><span class="pc-badge challenge">⚡ Desafio ${i+1}</span><span class="pc-pts">+${cfg.pointsChallenge}pts</span></div><p class="pc-text">${e(ch.text)}</p>${ch.hint?`<p class="pc-hint">${e(ch.hint)}</p>`:''}<p class="pc-time">⏱ ${cfg.cardTime}s</p></div>`;
   });
   if(currentFilter!=='challenge') AC.questions.forEach((q,i)=>{
-    html+=`<div class="preview-card question"><div class="pc-header"><span class="pc-badge question">❓ Pergunta ${i+1}</span><span class="pc-pts">+${cfg.pointsQuestion}pts</span></div><p class="pc-text">${e(q.text)}</p><div class="pc-answer"><span class="pc-answer-label">Resposta</span><span class="pc-answer-text">${e(q.answer)}</span></div><p class="pc-time">⏱ ${cfg.cardTime}s</p></div>`;
+    const answerHtml = q.type === 'numeric'
+      ? '<div class="pc-answer"><span class="pc-answer-label">Resposta</span><span class="pc-answer-text">' + e(String(q.answer_number||'')) + '</span></div>'
+      : '<div class="pc-answer"><span class="pc-answer-label">Tipo</span><span class="pc-answer-text">Múltipla escolha</span></div>';
+    html += '<div class="preview-card question">'
+      + '<div class="pc-header"><span class="pc-badge question">❓ Pergunta ' + (i+1) + '</span><span class="pc-pts">+' + cfg.pointsQuestion + 'pts</span></div>'
+      + '<p class="pc-text">' + e(q.text) + '</p>'
+      + answerHtml
+      + '<p class="pc-time">⏱ ' + cfg.cardTime + 's</p></div>';
   });
   document.getElementById('preview-grid').innerHTML = html || '<p style="color:var(--text3);padding:1rem">Sem cards.</p>';
 }
@@ -545,13 +605,13 @@ function saveAll(silent) {
   AC.cfg.r1MinusMax     = iv('c-mmax',30);     AC.cfg.pointsChallenge= iv('c-pchall',20);
   AC.cfg.pointsQuestion = iv('c-pques',10);
   DB.saveConfig(AC.cfg); DB.saveChallenges(AC.challenges);
-  DB.saveQuestions(AC.questions);
+  // Questions are in Supabase — no batch save needed
   // shops are saved per-item to Supabase — no batch save needed
   if (!silent) msg('Guardado!', false);
 }
-function resetAll() {
+async function resetAll() {
   if(!confirm('Repor tudo (não apaga jogos)?')) return;
-  DB.resetAll(); AC.cfg=DB.loadConfig(); AC.challenges=DB.loadChallenges(); AC.questions=DB.loadQuestions();
+  DB.resetAll(); AC.cfg=DB.loadConfig(); AC.challenges=DB.loadChallenges(); AC.questions=await DB.loadQuestions();
   renderConfig(); renderChallenges(); renderQuestions(); renderShops(); renderPreview();
   msg('Valores repostos.',false);
 }

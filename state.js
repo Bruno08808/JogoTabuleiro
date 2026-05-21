@@ -34,28 +34,7 @@ const DEFAULT_CHALLENGES = [
 ];
 
 // ─── DEFAULT QUESTIONS ────────────────────────────────────
-const DEFAULT_QUESTIONS = [
-  { id:1,  text:'Quantas patas tem uma aranha?',                        answer:'8 patas.' },
-  { id:2,  text:'Qual é o animal terrestre mais rápido do mundo?',      answer:'O guepardo (chita).' },
-  { id:3,  text:'De que cor é o céu num dia sem nuvens?',               answer:'Azul.' },
-  { id:4,  text:'Quantos planetas tem o Sistema Solar?',                answer:'8 planetas.' },
-  { id:5,  text:'Qual é o maior animal do mundo?',                      answer:'A baleia azul.' },
-  { id:6,  text:'Quantas cores tem o arco-íris?',                       answer:'7 cores.' },
-  { id:7,  text:'Como se chama o bebé do cão?',                         answer:'Cachorro.' },
-  { id:8,  text:'Qual é o continente mais frio do mundo?',              answer:'Antártida.' },
-  { id:9,  text:'Quantas horas tem um dia?',                            answer:'24 horas.' },
-  { id:10, text:'Qual é o animal que vive mais tempo?',                 answer:'A tartaruga (pode viver mais de 150 anos).' },
-  { id:11, text:'O que come uma borboleta?',                            answer:'Néctar das flores.' },
-  { id:12, text:'Quantos lados tem um triângulo?',                      answer:'3 lados.' },
-  { id:13, text:'Qual é o planeta mais próximo do Sol?',                answer:'Mercúrio.' },
-  { id:14, text:'De que é feita a teia de uma aranha?',                 answer:'De seda — um fio que ela produz.' },
-  { id:15, text:'Qual é o animal mais alto do mundo?',                  answer:'A girafa.' },
-  { id:16, text:'Quantos meses tem um ano?',                            answer:'12 meses.' },
-  { id:17, text:'Como se chama o bebé do gato?',                        answer:'Gatinho ou cria.' },
-  { id:18, text:'Qual é a capital de Portugal?',                        answer:'Lisboa.' },
-  { id:19, text:'O que é que os peixes usam para respirar?',            answer:'Guelras.' },
-  { id:20, text:'Quantos sentidos tem o ser humano?',                   answer:'5 — visão, audição, olfato, paladar e tato.' },
-];
+// Questions are stored in Supabase — see DB.loadQuestions()
 
 // ─── DEFAULT SHOPS ────────────────────────────────────────
 // Each shop: { id, name, ownerName, logo (base64 or null) }
@@ -93,9 +72,52 @@ const DB = {
   loadChallenges()     { return this._get(this.KEYS.challenges, DEFAULT_CHALLENGES); },
   saveChallenges(arr)  { this._set(this.KEYS.challenges, arr); },
 
-  // Questions
-  loadQuestions()      { return this._get(this.KEYS.questions, DEFAULT_QUESTIONS); },
-  saveQuestions(arr)   { this._set(this.KEYS.questions, arr); },
+  // ── QUESTIONS (Supabase) ─────────────────────────────────
+  async loadQuestions() {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+      const res = await fetch(
+        this.SB_URL + '/rest/v1/questions?order=id.asc',
+        { headers: this._sbHeaders(), signal: controller.signal }
+      );
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(await res.text());
+      const rows = await res.json();
+      return rows.length ? rows : [];
+    } catch (err) {
+      console.error('Supabase loadQuestions:', err);
+      return [];
+    }
+  },
+
+  async addQuestion(q) {
+    try {
+      const res = await fetch(
+        this.SB_URL + '/rest/v1/questions',
+        { method: 'POST', headers: this._sbHeaders(), body: JSON.stringify(q) }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      return await res.json();
+    } catch (err) {
+      console.error('Supabase addQuestion:', err);
+    }
+  },
+
+  async deleteQuestion(id) {
+    try {
+      const res = await fetch(
+        this.SB_URL + '/rest/v1/questions?id=eq.' + id,
+        { method: 'DELETE', headers: this._sbHeaders() }
+      );
+      if (!res.ok) throw new Error(await res.text());
+    } catch (err) {
+      console.error('Supabase deleteQuestion:', err);
+    }
+  },
+
+  // saveQuestions kept as no-op for compatibility
+  async saveQuestions(arr) { /* no-op — use addQuestion/deleteQuestion */ },
 
   // ── SHOPS (Supabase) ──────────────────────────────────
   async loadShops() {
@@ -306,7 +328,7 @@ const DB = {
 
   // Reset local config/shops (does NOT delete games from Supabase)
   resetAll() {
-    [this.KEYS.config, this.KEYS.challenges, this.KEYS.questions,
+    [this.KEYS.config, this.KEYS.challenges,
      this.KEYS.usedShops].forEach(k => localStorage.removeItem(k));
   },
 };

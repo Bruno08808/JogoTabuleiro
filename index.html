@@ -49,7 +49,7 @@
       <span id="hdr-points" class="hdr-points">0 pts</span>
       <span id="hdr-throws" class="hdr-throws">0/0</span>
       <button id="btn-pause" class="btn-pause" onclick="uiPause()">⏸ Pausa</button>
-      <a href="admin.html" class="btn-icon">⚙️</a>
+      <button class="btn-icon" onclick="uiGoToAdmin()" title="Definições">⚙️</button>
     </div>
   </header>
 
@@ -58,6 +58,8 @@
     <div class="board-area">
       <div id="board-wrap">
         <svg id="board-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+        <svg id="pawn-svg"  xmlns="http://www.w3.org/2000/svg"
+          style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;display:block"></svg>
       </div>
       <div id="dice-section" class="dice-bar">
         <span class="dice-label">Dado:</span>
@@ -91,22 +93,36 @@
      ECRÃ: FIM
 ══════════════════════════════════════════ -->
 <div id="screen-end" class="screen">
-  <div class="end-box">
-    <div id="end-emoji" class="end-emoji">🏆</div>
-    <h2 id="end-title" class="end-title">Missão cumprida!</h2>
-    <p id="end-team" class="end-team"></p>
-    <div id="end-team-count" class="end-team-count"></div>
-    <div class="end-stats">
-      <div class="stat-box">
-        <span id="end-time" class="stat-val">—</span>
-        <span class="stat-label">Tempo restante</span>
+  <div class="end-layout">
+
+    <!-- Left: result card -->
+    <div class="end-box">
+      <div id="end-emoji" class="end-emoji">🏆</div>
+      <h2 id="end-title" class="end-title">Missão cumprida!</h2>
+      <p id="end-team" class="end-team"></p>
+      <div id="end-team-count" class="end-team-count"></div>
+      <div class="end-stats">
+        <div class="stat-box">
+          <span id="end-time" class="stat-val">—</span>
+          <span class="stat-label">Tempo restante</span>
+        </div>
+        <div class="stat-box">
+          <span id="end-points" class="stat-val">0</span>
+          <span class="stat-label">Pontos</span>
+        </div>
       </div>
-      <div class="stat-box">
-        <span id="end-points" class="stat-val">0</span>
-        <span class="stat-label">Pontos</span>
-      </div>
+      <button class="btn-primary" onclick="uiNewTeam()">Voltar ao Admin 🏠</button>
     </div>
-    <button class="btn-primary" onclick="uiNewTeam()">Voltar ao Admin 🏠</button>
+
+    <!-- Right: full ranking -->
+    <div class="end-ranking-panel">
+      <div class="ranking-header">
+        <span class="ranking-title">🏆 Classificação do dia</span>
+        <span class="ranking-date" id="end-ranking-date"></span>
+      </div>
+      <div id="end-ranking-list" class="ranking-list"></div>
+    </div>
+
   </div>
 </div>
 
@@ -210,32 +226,77 @@
 ══════════════════════════════════════════ -->
 <div id="overlay-r2" class="overlay" style="display:none">
   <div id="r2-card-box" class="r2-card-box challenge">
-    <div class="r2-timer-ring">
-      <svg viewBox="0 0 110 110" width="90" height="90">
-        <circle cx="55" cy="55" r="50" fill="none" stroke="#1e2a3d" stroke-width="8"/>
-        <circle id="r2-timer-arc" cx="55" cy="55" r="50" fill="none"
-          stroke="#1a8cff" stroke-width="8" stroke-linecap="round"
-          stroke-dasharray="314.16" stroke-dashoffset="0"
-          transform="rotate(-90 55 55)"/>
-      </svg>
-      <span id="r2-secs" class="r2-secs">30</span>
+
+    <!-- Header: label + timer + pts -->
+    <div class="r2-card-header">
+      <span id="r2-deck-label" class="r2-deck-label">❓ Pergunta</span>
+      <div class="r2-timer-ring">
+        <svg viewBox="0 0 110 110" width="68" height="68">
+          <circle cx="55" cy="55" r="50" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+          <circle id="r2-timer-arc" cx="55" cy="55" r="50" fill="none"
+            stroke="#c77dff" stroke-width="8" stroke-linecap="round"
+            stroke-dasharray="314.16" stroke-dashoffset="0"
+            transform="rotate(-90 55 55)"/>
+        </svg>
+        <span id="r2-secs" class="r2-secs">30</span>
+      </div>
+      <span id="r2-card-pts" class="r2-card-pts">+10 pts</span>
     </div>
-    <span id="r2-deck-label" class="r2-deck-label">⚡ Desafio</span>
+
+    <!-- Question text -->
     <p id="r2-card-text" class="r2-card-text">Texto</p>
-    <p id="r2-card-hint" class="r2-card-hint"></p>
-    <p id="r2-card-pts"  class="r2-card-pts">+20 pontos</p>
-    <div id="r2-answer-box" class="r2-answer-box" style="display:none">
-      <span class="r2-answer-label">Resposta:</span>
-      <span id="r2-answer-text" class="r2-answer-text"></span>
+
+    <!-- Main image (Tipo A with single image) -->
+    <div id="r2-card-image-wrap" style="display:none">
+      <img id="r2-card-image" class="r2-card-image" src="" alt="">
     </div>
+
+    <!-- Tipo A: multiple choice options -->
+    <div id="r2-options" class="r2-options" style="display:none"></div>
+
+    <!-- Tipo B: slot machine -->
+    <div id="r2-slot" class="r2-slot" style="display:none">
+      <div class="slot-number-control">
+        <button class="slot-btn" onclick="slotDecrement()">−</button>
+        <input id="slot-number" class="slot-number-input" type="number"
+          value="1" min="0" max="9999"
+          oninput="window._slotValue=parseInt(this.value)||0"
+          onkeydown="if(event.key==='Enter') slotPull()">
+        <button class="slot-btn" onclick="slotIncrement()">+</button>
+      </div>
+      <div class="slot-machine-wrap">
+        <div class="slot-machine">
+          <div class="slot-window">
+            <div id="slot-reel" class="slot-reel">
+              <div class="slot-item slot-up">▲ É maior</div>
+              <div class="slot-item slot-check">✓ Correcto!</div>
+              <div class="slot-item slot-down">▼ É menor</div>
+            </div>
+          </div>
+        </div>
+        <div class="slot-lever-wrap">
+          <button id="slot-lever" class="slot-lever" onclick="slotPull()">
+            <div class="lever-ball"></div>
+            <div class="lever-rod"></div>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Challenge hint -->
+    <p id="r2-card-hint" class="r2-card-hint"></p>
+
+    <!-- Result -->
     <p id="r2-result-text" class="r2-result"></p>
+
+    <!-- Buttons -->
     <div class="r2-btns">
       <button id="btn-r2-done"   class="btn-done"   onclick="r2ChallengeDone()">✓ Feito!</button>
-      <button id="btn-r2-reveal" class="btn-reveal"  onclick="uiRevealAnswer()">👁 Ver resposta</button>
       <button id="btn-r2-repeat" class="btn-repeat"  onclick="repeatCard()">🔁 Repetir</button>
       <div    id="r2-answer-btns" class="answer-btns"></div>
       <button id="btn-r2-close"  class="btn-primary" style="display:none">Continuar →</button>
     </div>
+
   </div>
 </div>
 

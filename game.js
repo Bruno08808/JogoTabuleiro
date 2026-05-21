@@ -2,16 +2,77 @@
 // game.js — Lógica do jogo · Coruche Digital
 // ============================================================
 
-function gameInit() {
-  G.cfg        = DB.loadConfig();
-  G.challenges = DB.loadChallenges();
-  G.questions  = DB.loadQuestions();
-  // index.html starts directly with the shop picker
-  gameNewFlow();
+async function gameInit() {
+  try {
+    G.cfg        = DB.loadConfig();
+    G.challenges = DB.loadChallenges();
+    G.questions  = await DB.loadQuestions();
+    // Try to restore an interrupted game first
+    const restored = await gameRestoreIfNeeded();
+    if (!restored) gameNewFlow();
+  } catch(err) {
+    console.error('gameInit error:', err);
+    // Even if something fails, proceed to game flow
+    if (!G.teamName) gameNewFlow();
+  }
 }
 
 // ─── START FLOW ───────────────────────────────────────────
 // Called from admin when monitor clicks "Novo Jogo"
+// ─── RESTORE ACTIVE GAME ──────────────────────────────────
+async function gameRestoreIfNeeded() {
+  const raw = localStorage.getItem('crd_active_game');
+  if (!raw) return false;
+  try {
+    const snap = JSON.parse(raw);
+    if (!snap.teamName || snap.secsLeft <= 0) {
+      localStorage.removeItem('crd_active_game');
+      return false;
+    }
+    // Restore state
+    G.cfg            = DB.loadConfig();
+    G.challenges     = DB.loadChallenges();
+    G.questions      = G.questions && G.questions.length ? G.questions : await DB.loadQuestions();
+    G.teamName       = snap.teamName;
+    G.shopId         = snap.shopId;
+    G.shopName       = snap.shopName;
+    G.shopLogo       = snap.shopLogo;
+    G.ownerName      = snap.ownerName;
+    G.totalPlayers   = snap.totalPlayers;
+    G.points         = snap.points;
+    G.round          = snap.round;
+    G.throwsR1       = snap.throwsR1;
+    G.throwsR2       = snap.throwsR2;
+    G.pos            = snap.pos;
+    G.secsLeft       = snap.secsLeft;
+    G.usedChallenges = snap.usedChallenges || [];
+    G.usedQuestions  = snap.usedQuestions  || [];
+    G.r1Left = G.r1Right = null;
+    G.cardDeck = G.cardItem = null;
+    stopCardTimer();
+    UI._gameEnded = false;
+
+    // Clear saved snapshot
+    localStorage.removeItem('crd_active_game');
+
+    // Resume game
+    UI.showScreen('game');
+    UI.updateHeader();
+    UI.updateRanking();
+    UI.drawBoard();
+    requestAnimationFrame(() => PAWN.draw(G.pos));
+    timerStart();
+
+    const turn = G.round === 1 ? G.throwsR1 : G.throwsR2;
+    UI.promptDice(turn + 1, G.totalPlayers);
+    return true;
+  } catch(e) {
+    console.error('restoreGame:', e);
+    localStorage.removeItem('crd_active_game');
+    return false;
+  }
+}
+
 async function gameNewFlow() {
   const shops = await DB.draw3Shops();
   if (shops.length === 0) {
@@ -22,10 +83,10 @@ async function gameNewFlow() {
 }
 
 // Called when monitor picks a shop card
-function gamePickShop(shop, teamName, totalPlayers, minutes) {
+async function gamePickShop(shop, teamName, totalPlayers, minutes) {
   G.cfg            = DB.loadConfig();
   G.challenges     = DB.loadChallenges();
-  G.questions      = DB.loadQuestions();
+  G.questions      = G.questions && G.questions.length ? G.questions : await DB.loadQuestions();
   G.shopId         = shop.id;
   G.shopName       = shop.name;
   G.shopLogo       = shop.logo;
@@ -53,6 +114,8 @@ function gamePickShop(shop, teamName, totalPlayers, minutes) {
   UI.updateHeader();
   UI.updateRanking();
   UI.drawBoard();
+  // Init pawn at start position after board renders
+  requestAnimationFrame(() => PAWN.draw(0));
   timerStart();
   UI.promptDice(1, G.totalPlayers);
 }
@@ -86,9 +149,17 @@ function gamePause() {
 }
 
 // ─── ROLL ─────────────────────────────────────────────────
-function gameRoll(steps) {
+async function gameRoll(steps) {
+  const fromPos = G.pos;
   G.pos = (G.pos + steps) % BOARD.length;
+
+  // Animate pawn jumping to new position, then handle cell
+  await PAWN.animate(fromPos, G.pos);
+
+  // Redraw board (highlights destination cell) then redraw pawn
+  // drawBoard internally does double-rAF for pawn, so cell handling happens after
   UI.drawBoard();
+
   if (G.round === 1) { G.throwsR1++; handleCellR1(); }
   else               { G.throwsR2++; handleCellR2(); }
   UI.updateTurns();
@@ -189,7 +260,8 @@ async function gameEnd(completed) {
   if (G._timerInterval) clearInterval(G._timerInterval);
   stopCardTimer();
   G.timerRunning = false;
-  UI._gameEnded = true; // remove live entry from ranking
+  UI._gameEnded = true;
+  PAWN.clear();
 
   await DB.addGame({
     shopId:    G.shopId,
@@ -216,7 +288,8 @@ function randInt(min, max) {
 function pickCard(deck) {
   const arr  = deck === 'challenge' ? G.challenges : G.questions;
   const used = deck === 'challenge' ? G.usedChallenges : G.usedQuestions;
-  let avail  = arr.filter(c => !used.includes(c.id));
+  if (!arr || !arr.length) return { type:'text', text:'Sem perguntas disponíveis.', answer:'—' };
+  let avail = arr.filter(c => !used.includes(c.id));
   if (!avail.length) {
     if (deck === 'challenge') G.usedChallenges = [];
     else                      G.usedQuestions  = [];
@@ -224,6 +297,10 @@ function pickCard(deck) {
   }
   const item = avail[Math.floor(Math.random() * avail.length)];
   used.push(item.id);
+  // Parse options if stored as JSON string
+  if (item.options && typeof item.options === 'string') {
+    try { item.options = JSON.parse(item.options); } catch(e) {}
+  }
   return item;
 }
 
