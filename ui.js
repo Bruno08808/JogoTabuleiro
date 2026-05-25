@@ -1529,20 +1529,34 @@ function memoryRenderProducts(row, showColor, answers) {
     div.className = 'memory-product' + (_mem.phase === 'paint' ? ' clickable' : '');
     div.onclick   = _mem.phase === 'paint' ? () => memoryPaintProduct(i) : null;
 
-    const emojiEl  = document.createElement('div');
-    emojiEl.className   = 'memory-product-emoji';
-    emojiEl.textContent = prod.emoji;
+    // Image: show color version when memorising, b&w when painting
+    const imgSrc = showColor
+      ? (prod.imgColor || prod.emoji || '')
+      : (prod.imgBw    || prod.emoji || '');
 
-    const nameEl   = document.createElement('div');
+    if (imgSrc && imgSrc.startsWith('data:')) {
+      const imgEl = document.createElement('img');
+      imgEl.src = imgSrc;
+      imgEl.className = 'memory-product-img';
+      imgEl.alt = prod.name;
+      div.appendChild(imgEl);
+    } else {
+      // Fallback to emoji
+      const emojiEl = document.createElement('div');
+      emojiEl.className   = 'memory-product-emoji';
+      emojiEl.textContent = prod.emoji || '?';
+      div.appendChild(emojiEl);
+    }
+
+    const nameEl = document.createElement('div');
     nameEl.className   = 'memory-product-name';
     nameEl.textContent = prod.name;
 
-    const swatch   = document.createElement('div');
+    const swatch = document.createElement('div');
     const isPainted = !showColor && answers && answers[i];
     swatch.className = 'memory-product-swatch' + (showColor || isPainted ? '' : ' bw');
     swatch.style.background = showColor ? prod.color : (answers && answers[i] ? answers[i] : '#555');
 
-    div.appendChild(emojiEl);
     div.appendChild(nameEl);
     div.appendChild(swatch);
     el.appendChild(div);
