@@ -67,7 +67,7 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:v
 /* ── Game Header ──────────────────────────────────────────── */
 .game-header { display:flex; align-items:center; justify-content:space-between; padding:6px 14px; background:var(--bg2); border-bottom:1px solid var(--border); flex-shrink:0; gap:10px; min-height:52px; }
 .hdr-left { display:flex; align-items:center; gap:8px; flex-shrink:0; min-width:0; }
-.hdr-logo { height:28px; object-fit:contain; flex-shrink:0; }
+.hdr-logo { height:36px; object-fit:contain; flex-shrink:0; filter:drop-shadow(0 1px 4px rgba(0,229,160,.3)); }
 .hdr-team-wrap { display:flex; align-items:center; gap:6px; min-width:0; }
 .hdr-shop-logo { height:26px; width:26px; object-fit:contain; border-radius:4px; flex-shrink:0; }
 .hdr-team { font-family:var(--font-d); font-size:14px; font-weight:700; color:var(--green); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
@@ -554,4 +554,163 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:v
   color:var(--text2); background:var(--bg3);
   border:1px solid var(--border2); border-radius:8px;
   padding:4px 12px;
+}
+
+/* ── End Screen Hero (photo moment) ──────────────────────── */
+.end-hero {
+  width:100%; background:linear-gradient(135deg, var(--bg3), var(--surface));
+  border:2px solid var(--green); border-radius:20px;
+  padding:1.5rem 1rem; margin-bottom:1.25rem;
+  display:flex; flex-direction:column; align-items:center; gap:.75rem;
+  position:relative; overflow:hidden;
+  box-shadow:0 0 40px rgba(0,229,160,.2), 0 8px 32px rgba(0,0,0,.4);
+}
+/* Glow ring behind logo */
+.end-hero::before {
+  content:''; position:absolute;
+  width:180px; height:180px; border-radius:50%;
+  background:radial-gradient(circle, rgba(0,229,160,.18), transparent 70%);
+  top:10px; left:50%; transform:translateX(-50%);
+  pointer-events:none;
+}
+.end-hero-position {
+  font-size:48px; line-height:1;
+  filter:drop-shadow(0 4px 12px rgba(255,215,0,.5));
+}
+.end-hero-logo-wrap {
+  width:110px; height:110px; border-radius:50%;
+  border:4px solid var(--green);
+  box-shadow:0 0 0 6px rgba(0,229,160,.2), 0 8px 24px rgba(0,0,0,.4);
+  overflow:hidden; background:var(--bg2);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.end-hero-logo {
+  width:100%; height:100%; object-fit:contain; padding:8px;
+}
+.end-hero-team {
+  font-family:var(--font-d); font-size:28px; font-weight:800;
+  color:var(--text); text-align:center; line-height:1.2;
+}
+.end-hero-pts {
+  font-family:var(--font-d); font-size:22px; font-weight:800;
+  color:var(--green);
+  background:rgba(0,229,160,.1); border:1px solid rgba(0,229,160,.3);
+  border-radius:20px; padding:4px 18px;
+}
+
+/* Animate hero on show */
+@keyframes heroIn {
+  from { transform:scale(.85); opacity:0; }
+  to   { transform:scale(1);   opacity:1; }
+}
+.end-hero { animation:heroIn .5s cubic-bezier(.4,0,.2,1); }
+
+/* ── Challenge: SPOT (Jogo das Diferenças) ───────────────── */
+.spot-box {
+  background:var(--bg2); border:2px solid rgba(0,229,160,.4);
+  border-radius:20px; padding:1rem 1.25rem;
+  width:100%; max-width:98vw;
+  height:96vh;
+  display:flex; flex-direction:column; gap:.5rem;
+  box-shadow:var(--shadow); overflow:hidden;
+}
+.spot-header {
+  display:flex; justify-content:space-between; align-items:center; gap:12px;
+  flex-shrink:0;
+}
+.spot-title    { font-family:var(--font-d); font-size:16px; font-weight:800; color:var(--green); }
+.spot-subtitle { font-size:11px; color:var(--text2); margin-top:1px; }
+.spot-found    { font-family:var(--font-d); font-size:15px; font-weight:800; color:var(--text); }
+.spot-score-label { font-family:var(--font-d); font-size:15px; font-weight:800; color:var(--green); }
+
+/* Side by side */
+.spot-images {
+  display:flex; flex-direction:row; gap:10px;
+  flex:1; min-height:0; overflow:hidden;
+}
+.spot-img-wrap {
+  flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; min-height:0;
+}
+.spot-img-label {
+  font-size:10px; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:.06em; flex-shrink:0;
+}
+.spot-canvas-wrap {
+  position:relative; flex:1; min-height:0;
+  border-radius:10px; overflow:hidden;
+  border:1px solid var(--border2);
+}
+.spot-img {
+  display:block; width:100%; height:100%;
+  object-fit:contain; border-radius:10px;
+  user-select:none; -webkit-user-drag:none;
+  background:var(--bg3);
+}
+.spot-svg {
+  position:absolute; inset:0; width:100%; height:100%;
+  pointer-events:none;
+}
+#spot-clickable { cursor:crosshair; }
+#spot-clickable .spot-img { pointer-events:all; }
+
+/* Circles on SVG */
+.spot-circle-found { fill:none; stroke:#ff3030; stroke-width:3; opacity:.9; }
+.spot-circle-orig  { fill:none; stroke:#00e5a0; stroke-width:3; opacity:.9;
+  stroke-dasharray:6 4; animation:dashSpin 4s linear infinite; }
+@keyframes dashSpin { to { stroke-dashoffset:-40; } }
+.spot-circle-miss  { fill:rgba(255,61,90,.15); stroke:#ff3d5a; stroke-width:2; opacity:.7; }
+
+.spot-feedback {
+  font-family:var(--font-d); font-size:15px; font-weight:800;
+  min-height:22px; text-align:center;
+}
+.spot-feedback.correct { color:var(--green); }
+.spot-feedback.wrong   { color:var(--red); }
+.spot-feedback.done    { color:var(--gold); }
+
+/* ── End screen — highlighted team row ───────────────────── */
+.ranking-row.end-highlight {
+  border-color: var(--green) !important;
+  background: rgba(0,229,160,0.12) !important;
+  box-shadow: 0 0 0 3px rgba(0,229,160,0.4), 0 4px 20px rgba(0,229,160,0.2) !important;
+  transform: scale(1.02);
+  position: relative;
+  z-index: 2;
+}
+.ranking-row.end-highlight::after {
+  content: '← Vocês!';
+  position: absolute;
+  right: -70px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-d);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--green);
+  white-space: nowrap;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* ── End screen branding bar ─────────────────────────────── */
+.end-brand-bar {
+  display:flex; align-items:center; gap:14px;
+  padding:16px 20px;
+  background:linear-gradient(135deg, rgba(0,229,160,.12), rgba(26,140,255,.08));
+  border-bottom:1px solid rgba(0,229,160,.25);
+  flex-shrink:0;
+}
+.end-brand-logo {
+  height:48px; width:auto; object-fit:contain;
+  filter:drop-shadow(0 2px 8px rgba(0,229,160,.3));
+  flex-shrink:0;
+}
+.end-brand-text { display:flex; flex-direction:column; gap:2px; }
+.end-brand-name {
+  font-family:var(--font-d); font-size:18px; font-weight:800;
+  color:var(--green);
+}
+.end-brand-tag {
+  font-size:11px; color:var(--text2); font-weight:600;
+  letter-spacing:.04em;
 }

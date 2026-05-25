@@ -41,7 +41,7 @@ const UI = {
     el.textContent = fmtTime(s);
     // Update timers in challenge overlays
     const tStr = '⏱ ' + fmtTime(s);
-    ['drop-game-timer','body-game-timer','memory-game-timer'].forEach(id => {
+    ['drop-game-timer','body-game-timer','memory-game-timer','spot-game-timer'].forEach(id => {
       const t = document.getElementById(id);
       if (t) t.textContent = tStr;
     });
@@ -244,16 +244,21 @@ const UI = {
   drawBoard() {
     const wrap = document.getElementById('board-wrap');
     if (!wrap) return;
-    const svg = document.getElementById('board-svg');
+    const svg  = document.getElementById('board-svg');
+    const psvg = document.getElementById('pawn-svg');
     if (!svg) return;
     const VB = 600;
-    svg.setAttribute('viewBox', '0 0 ' + VB + ' ' + VB);
+    svg.setAttribute('viewBox',  '0 0 ' + VB + ' ' + VB);
+    // pawn-svg shares the same viewBox — coordinates in board units, scaling is automatic
+    if (psvg) {
+      psvg.setAttribute('viewBox', '0 0 ' + VB + ' ' + VB);
+      psvg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    }
     const CR = 72;
     const CW = Math.floor((VB - 2 * CR) / 7);
     const CH = CR;
     svg.innerHTML = this._boardHTML(VB, CR, CW, CH);
-    // Double rAF ensures browser has painted layout before pawn calculates positions
-    if (G.teamName) requestAnimationFrame(() => requestAnimationFrame(() => PAWN.draw(G.pos)));
+    if (G.teamName) requestAnimationFrame(() => PAWN.draw(G.pos));
   },
 
   _buildLayout(VB, CR, CW, CH) {
@@ -334,14 +339,14 @@ const UI = {
   },
 
   _centerHTML(ix, iy, iw, ih, cx, cy, isLight) {
-    const logoW  = Math.round(iw * 0.38);
+    const logoW  = Math.round(iw * 0.62);
     const logoH  = Math.round(logoW * 0.44);
     const logoX  = cx - logoW / 2;
-    const logoY  = iy + Math.round(ih * 0.04);
-    const deckH  = Math.round(ih * 0.5);
+    const logoY  = iy + Math.round(ih * 0.02);
+    const deckH  = Math.round(ih * 0.48);
     const deckW  = Math.round(deckH * 0.72);
     const gap    = Math.round(iw * 0.06);
-    const deckY  = logoY + logoH + Math.round(ih * 0.04);
+    const deckY  = logoY + logoH + Math.round(ih * 0.02);
     const deck1X = Math.round(cx - gap / 2 - deckW);
     const deck2X = Math.round(cx + gap / 2);
     const labelY = deckY + deckH + Math.round(deckH * 0.1);
@@ -349,7 +354,7 @@ const UI = {
     const col1   = isLight ? '#1472e8' : 'rgba(90,171,255,0.85)';
     const col2   = isLight ? '#8b44e8' : 'rgba(199,125,255,0.85)';
 
-    return '<image href="logo.png" x="' + logoX + '" y="' + logoY + '" width="' + logoW + '" height="' + logoH + '" preserveAspectRatio="xMidYMid meet" opacity="0.15"/>'
+    return '<image href="logo.png" x="' + logoX + '" y="' + logoY + '" width="' + logoW + '" height="' + logoH + '" preserveAspectRatio="xMidYMid meet" opacity="0.65"/>'
       + this._unoCard(deck1X, deckY, deckW, deckH, 'challenge')
       + this._unoCard(deck2X, deckY, deckW, deckH, 'question')
       + '<text x="' + (deck1X + deckW/2) + '" y="' + labelY + '" text-anchor="middle" font-family="Arial,sans-serif" font-weight="bold" font-size="' + labelFs + 'px" fill="' + col1 + '">Desafios</text>'
@@ -632,17 +637,22 @@ const UI = {
   // ─── END ────────────────────────────────────────────────
   async showEnd() {
     if (!G.cfg) return;
-    document.getElementById('end-emoji').textContent  = G.secsLeft > 0 ? '🏆' : '⏰';
     document.getElementById('end-title').textContent  = G.secsLeft > 0 ? 'Missão cumprida!' : 'O tempo acabou!';
-    document.getElementById('end-team').textContent   = G.teamName;
     document.getElementById('end-time').textContent   = fmtTime(G.secsLeft);
     document.getElementById('end-points').textContent = G.points;
-
     const ranking  = await DB.todayRanking();
     const myRank   = ranking.findIndex(g => !g.fake && g.points === G.points);
     const ordinals = ['1ª','2ª','3ª','4ª','5ª','6ª','7ª','8ª','9ª','10ª'];
     const countEl  = document.getElementById('end-team-count');
     if (countEl) countEl.textContent = (ordinals[myRank] || (myRank + 1) + 'ª') + ' equipa hoje · ' + ranking.length + ' jogos';
+
+    // Hero section — big logo + position + name for photo moment
+    const medals = ['🥇','🥈','🥉'];
+    const medal  = myRank >= 0 ? (medals[myRank] || (myRank + 1) + 'º') : '🏅';
+    document.getElementById('end-hero-position').textContent = medal;
+    document.getElementById('end-hero-logo').src             = G.shopLogo || 'logo.png';
+    document.getElementById('end-hero-team').textContent     = G.teamName || '';
+    document.getElementById('end-hero-pts').textContent      = G.points + ' pts';
 
     // Set date on end ranking header
     const dateEl = document.getElementById('end-ranking-date');
@@ -650,7 +660,21 @@ const UI = {
 
     // Render full ranking in the end panel
     const endList = document.getElementById('end-ranking-list');
-    if (endList) this._renderRanking(endList);
+    if (endList) {
+      this._renderRanking(endList);
+      // Find and highlight current team by matching name + points
+      setTimeout(() => {
+        const rows = endList.querySelectorAll('[data-rank-id]');
+        rows.forEach(row => {
+          const nameEl = row.querySelector('.rank-name');
+          const ptsEl  = row.querySelector('.rank-pts');
+          if (nameEl && nameEl.textContent.trim() === G.teamName) {
+            row.classList.add('end-highlight');
+            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        });
+      }, 400);
+    }
 
     // Also update the side ranking panel
     this.updateRanking();
@@ -659,7 +683,12 @@ const UI = {
 
   // ─── HELPERS ────────────────────────────────────────────
   showOverlay(id) { const el = document.getElementById(id); if (el) el.style.display = 'flex'; },
-  hideOverlay(id) { const el = document.getElementById(id); if (el) el.style.display = 'none'; },
+  hideOverlay(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+    // Redraw pawn after overlay closes — layout may have shifted
+    if (G.teamName) requestAnimationFrame(() => requestAnimationFrame(() => PAWN.draw(G.pos)));
+  },
 };
 
 // ─── GLOBAL HANDLERS ──────────────────────────────────────
@@ -883,41 +912,24 @@ const PAWN = {
     return { x: cell.x + cell.w / 2, y: cell.y + cell.h / 2 };
   },
 
-  // Convert board coords → screen pixels
-  // board-svg has aspect-ratio:1/1 so it renders as a square centred in board-wrap
-  // pawn-svg has inset:0 over board-wrap — same origin
+  // Board coords are used directly in SVG viewBox units (0-600)
+  // No pixel conversion needed — SVG handles scaling
   toScreen(bx, by) {
-    const svg  = document.getElementById('board-svg');
-    const wrap = document.getElementById('board-wrap');
-    if (!svg || !wrap) return { x: 0, y: 0, scale: 1 };
-
-    const svgRect  = svg.getBoundingClientRect();
-    const wrapRect = wrap.getBoundingClientRect();
-
-    // The rendered square size (board-svg respects aspect-ratio:1/1)
-    const size  = Math.min(svgRect.width, svgRect.height);
-    const scale = size / this.VB;
-
-    // Offset of the rendered square inside board-wrap
-    const offX = (svgRect.left - wrapRect.left) + (svgRect.width  - size) / 2;
-    const offY = (svgRect.top  - wrapRect.top)  + (svgRect.height - size) / 2;
-
-    return {
-      x:     offX + bx * scale,
-      y:     offY + by * scale,
-      scale: scale,
-    };
+    // Estimate visual scale for sizing the pawn (not for positioning)
+    const psvg = document.getElementById('pawn-svg');
+    const scale = psvg ? Math.min(psvg.clientWidth, psvg.clientHeight) / this.VB : 1;
+    return { x: bx, y: by, scale: Math.max(0.5, scale) };
   },
 
   // Draw the pawn at a given board position immediately (no animation)
   draw(pos) {
     const psvg = document.getElementById('pawn-svg');
     if (!psvg) return;
-    const bc = this.cellCentre(pos);
-    const sc = this.toScreen(bc.x, bc.y);
-    this._x = sc.x;
-    this._y = sc.y;
-    this._renderAt(sc.x, sc.y, sc.scale || 1);
+    const bc    = this.cellCentre(pos);
+    const scale = this.toScreen(bc.x, bc.y).scale;
+    this._x = bc.x;
+    this._y = bc.y;
+    this._renderAt(bc.x, bc.y, scale);
   },
 
   // Render the pawn SVG at screen pixel position
@@ -998,23 +1010,21 @@ const PAWN = {
   // Jump from one cell to the adjacent one with arc motion
   _jumpTo(from, to) {
     return new Promise(resolve => {
-      const DURATION = 140;  // ms per cell
+      const DURATION = 140;
       const STEPS    = 12;
-      const A_HEIGHT = 28;   // arc height in board units
+      const A_HEIGHT = 28;  // arc height in board units
 
-      const bc0 = this.cellCentre(from);
-      const bc1 = this.cellCentre(to);
-      const sc0 = this.toScreen(bc0.x, bc0.y);
-      const sc1 = this.toScreen(bc1.x, bc1.y);
-      const scale = sc0.scale || 1;
+      const bc0   = this.cellCentre(from);
+      const bc1   = this.cellCentre(to);
+      const scale = this.toScreen(bc0.x, bc0.y).scale;
 
       let step = 0;
       const interval = setInterval(() => {
         step++;
         const t   = step / STEPS;
-        const arc = Math.sin(t * Math.PI) * A_HEIGHT * scale;
-        const x   = sc0.x + (sc1.x - sc0.x) * t;
-        const y   = sc0.y + (sc1.y - sc0.y) * t - arc;
+        const arc = Math.sin(t * Math.PI) * A_HEIGHT;
+        const x   = bc0.x + (bc1.x - bc0.x) * t;
+        const y   = bc0.y + (bc1.y - bc0.y) * t - arc;
         this._renderAt(x, y, scale);
         if (step >= STEPS) {
           clearInterval(interval);
@@ -1029,19 +1039,17 @@ const PAWN = {
     return new Promise(resolve => {
       const STEPS    = 8;
       const DURATION = 200;
-      const bc = this.cellCentre(pos);
-      const sc = this.toScreen(bc.x, bc.y);
-      const scale = sc.scale || 1;
+      const bc    = this.cellCentre(pos);
+      const scale = this.toScreen(bc.x, bc.y).scale;
       let step = 0;
       const interval = setInterval(() => {
         step++;
-        const t   = step / STEPS;
-        // Damped bounce: goes down slightly then back up
-        const bump = Math.abs(Math.sin(t * Math.PI * 2)) * 8 * (1 - t) * scale;
-        this._renderAt(sc.x, sc.y - bump, scale);
+        const t    = step / STEPS;
+        const bump = Math.abs(Math.sin(t * Math.PI * 2)) * 8 * (1 - t);
+        this._renderAt(bc.x, bc.y - bump, scale);
         if (step >= STEPS) {
           clearInterval(interval);
-          this._renderAt(sc.x, sc.y, scale);
+          this._renderAt(bc.x, bc.y, scale);
           resolve();
         }
       }, DURATION / STEPS);
@@ -1174,6 +1182,7 @@ UI.showCard = function() {
     if      (type === 'drop')   { showDropChallenge(G.cardItem);   return; }
     else if (type === 'body')   { showBodyChallenge(G.cardItem);   return; }
     else if (type === 'memory') { showMemoryChallenge(G.cardItem); return; }
+    else if (type === 'spot')   { showSpotChallenge(G.cardItem);   return; }
     // 'simple' falls through to original
   }
   _origShowCard();
@@ -1596,6 +1605,154 @@ function memoryClose() {
   const pts = _mem._totalPts || 0;
   if (pts > 0) {
     G.points += pts;
+    UI.updatePoints();
+    UI._renderRanking(document.getElementById('ranking-list'));
+  }
+  stopCardTimer();
+  setTimeout(() => afterThrow(), 50);
+}
+
+// ─── CHALLENGE: SPOT (Jogo das Diferenças) ────────────────
+let _spot = {};
+
+function showSpotChallenge(item) {
+  UI.hideDice();
+  const d = item.data || item;
+
+  _spot = {
+    item:       d,
+    diffs:      d.diffs || [],
+    found:      new Array(d.diffs ? d.diffs.length : 0).fill(false),
+    score:      0,
+    misses:     0,
+    finished:   false,
+  };
+
+  document.getElementById('spot-title').textContent    = d.name || 'Jogo das Diferenças';
+  document.getElementById('spot-img-orig').src          = d.imgOrig || '';
+  document.getElementById('spot-img-err').src           = d.imgErr  || '';
+  document.getElementById('spot-found').textContent     = '0 / ' + _spot.diffs.length;
+  document.getElementById('spot-score-label').textContent = '0 pts';
+  document.getElementById('spot-feedback').textContent  = '';
+  document.getElementById('spot-feedback').className    = 'spot-feedback';
+  document.getElementById('spot-close-btn').style.display = 'none';
+  document.getElementById('spot-svg-orig').innerHTML    = '';
+  document.getElementById('spot-svg-err').innerHTML     = '';
+
+  // Click handler on error image
+  const clickable = document.getElementById('spot-clickable');
+  clickable.onclick = spotClick;
+
+  UI.showOverlay('overlay-spot');
+}
+
+function spotGetImgRect() {
+  // Get the actual rendered bounds of the image inside the container (object-fit:contain)
+  const img  = document.getElementById('spot-img-err');
+  const wrap = document.getElementById('spot-clickable');
+  const wR   = wrap.getBoundingClientRect();
+  const iR   = img.getBoundingClientRect();
+  // Natural aspect ratio
+  const natW = img.naturalWidth  || img.width;
+  const natH = img.naturalHeight || img.height;
+  const aspW = wR.width;
+  const aspH = wR.height;
+  // Scaled size maintaining aspect ratio (contain)
+  const scale = Math.min(aspW / natW, aspH / natH);
+  const rW    = natW * scale;
+  const rH    = natH * scale;
+  const offX  = (aspW - rW) / 2;
+  const offY  = (aspH - rH) / 2;
+  return { left: wR.left + offX, top: wR.top + offY, width: rW, height: rH, offX, offY, rW, rH, aspW, aspH };
+}
+
+function spotClick(e) {
+  if (_spot.finished) return;
+  const imgR  = spotGetImgRect();
+  const rx    = (e.clientX - imgR.left)  / imgR.width;
+  const ry    = (e.clientY - imgR.top)   / imgR.height;
+  // Ignore clicks outside the actual image area
+  if (rx < 0 || rx > 1 || ry < 0 || ry > 1) return;
+  const r     = _spot.item.radius || 0.07;
+
+  let hit = -1;
+  _spot.diffs.forEach((diff, i) => {
+    if (_spot.found[i]) return;
+    const dx = rx - diff.x;
+    const dy = ry - diff.y;
+    if (Math.sqrt(dx*dx + dy*dy) < r) hit = i;
+  });
+
+  if (hit >= 0) {
+    _spot.found[hit] = true;
+    _spot.score += _spot.item.pointsEach || 8;
+    spotDrawCircle('err',  _spot.diffs[hit], 'found');
+    spotDrawCircle('orig', _spot.diffs[hit], 'orig');
+    triggerConfetti();
+
+    const total = _spot.diffs.filter(Boolean).length;
+    const found = _spot.found.filter(Boolean).length;
+    document.getElementById('spot-found').textContent       = found + ' / ' + total;
+    document.getElementById('spot-score-label').textContent = _spot.score + ' pts';
+    document.getElementById('spot-feedback').textContent    = '✓ ' + _spot.diffs[hit].label + '! +' + (_spot.item.pointsEach || 8) + ' pts';
+    document.getElementById('spot-feedback').className      = 'spot-feedback correct';
+
+    if (found >= total) spotFinish();
+  } else {
+    // Miss — draw a small fading circle
+    _spot.misses++;
+    spotDrawMiss('err', rx, ry);
+    document.getElementById('spot-feedback').textContent = '✗ Não é aí! Continua a tentar...';
+    document.getElementById('spot-feedback').className   = 'spot-feedback wrong';
+  }
+}
+
+function spotImgToSvg(rx, ry) {
+  // Convert image-relative coords to SVG container coords
+  const imgR = spotGetImgRect();
+  const wrap = document.getElementById('spot-clickable').getBoundingClientRect();
+  const svgX = (imgR.offX + rx * imgR.rW) / imgR.aspW;
+  const svgY = (imgR.offY + ry * imgR.rH) / imgR.aspH;
+  const svgR = (imgR.rW / imgR.aspW) * 0.07; // radius as fraction of SVG width
+  return { x: svgX, y: svgY, r: svgR };
+}
+
+function spotDrawCircle(side, diff, type) {
+  const svg  = document.getElementById('spot-svg-' + side);
+  const pos  = spotImgToSvg(diff.x, diff.y);
+  const c    = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx', (pos.x * 100) + '%');
+  c.setAttribute('cy', (pos.y * 100) + '%');
+  c.setAttribute('r',  (pos.r * 100) + '%');
+  c.setAttribute('class', type === 'orig' ? 'spot-circle-orig' : 'spot-circle-found');
+  svg.appendChild(c);
+}
+
+function spotDrawMiss(side, rx, ry) {
+  const svg = document.getElementById('spot-svg-' + side);
+  const pos = spotImgToSvg(rx, ry);
+  const c   = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  c.setAttribute('cx', (pos.x * 100) + '%');
+  c.setAttribute('cy', (pos.y * 100) + '%');
+  c.setAttribute('r',  (pos.r * 0.6 * 100) + '%');
+  c.setAttribute('class','spot-circle-miss');
+  svg.appendChild(c);
+  setTimeout(() => { if (c.parentNode) c.parentNode.removeChild(c); }, 1200);
+}
+
+function spotFinish() {
+  _spot.finished = true;
+  document.getElementById('spot-clickable').onclick = null;
+  document.getElementById('spot-feedback').textContent = '🎉 Encontraste todas as diferenças! ' + _spot.score + ' pts!';
+  document.getElementById('spot-feedback').className   = 'spot-feedback done';
+  document.getElementById('spot-close-btn').style.display = '';
+  triggerConfetti();
+}
+
+function spotClose() {
+  UI.hideOverlay('overlay-spot');
+  if (_spot.score > 0) {
+    G.points += _spot.score;
     UI.updatePoints();
     UI._renderRanking(document.getElementById('ranking-list'));
   }

@@ -156,9 +156,9 @@ async function gameRoll(steps) {
   // Animate pawn jumping to new position, then handle cell
   await PAWN.animate(fromPos, G.pos);
 
-  // Redraw board (highlights destination cell) then redraw pawn
-  // drawBoard internally does double-rAF for pawn, so cell handling happens after
+  // Redraw board then force pawn redraw after layout settles
   UI.drawBoard();
+  setTimeout(() => PAWN.draw(G.pos), 120);
 
   if (G.round === 1) { G.throwsR1++; handleCellR1(); }
   else               { G.throwsR2++; handleCellR2(); }

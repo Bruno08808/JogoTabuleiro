@@ -58,7 +58,7 @@
     <div class="board-area">
       <div id="board-wrap">
         <svg id="board-svg" xmlns="http://www.w3.org/2000/svg"></svg>
-        <svg id="pawn-svg"  xmlns="http://www.w3.org/2000/svg"
+        <svg id="pawn-svg"  xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" preserveAspectRatio="xMidYMid meet"
           style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;display:block"></svg>
       </div>
       <div id="dice-section" class="dice-bar">
@@ -97,9 +97,18 @@
 
     <!-- Left: result card -->
     <div class="end-box">
-      <div id="end-emoji" class="end-emoji">🏆</div>
+
+      <!-- HERO — logo + position + name (for photos) -->
+      <div class="end-hero" id="end-hero">
+        <div class="end-hero-position" id="end-hero-position">🥇</div>
+        <div class="end-hero-logo-wrap">
+          <img id="end-hero-logo" class="end-hero-logo" src="" alt="">
+        </div>
+        <div class="end-hero-team" id="end-hero-team">—</div>
+        <div class="end-hero-pts" id="end-hero-pts">0 pts</div>
+      </div>
+
       <h2 id="end-title" class="end-title">Missão cumprida!</h2>
-      <p id="end-team" class="end-team"></p>
       <div id="end-team-count" class="end-team-count"></div>
       <div class="end-stats">
         <div class="stat-box">
@@ -116,6 +125,14 @@
 
     <!-- Right: full ranking -->
     <div class="end-ranking-panel">
+      <!-- Coruche Digital branding bar -->
+      <div class="end-brand-bar">
+        <img src="logo.png" class="end-brand-logo" alt="Coruche Digital">
+        <div class="end-brand-text">
+          <span class="end-brand-name">Coruche Digital</span>
+          <span class="end-brand-tag">Jogo da Criação · Dia da Criança</span>
+        </div>
+      </div>
       <div class="ranking-header">
         <span class="ranking-title">🏆 Classificação do dia</span>
         <span class="ranking-date" id="end-ranking-date"></span>
@@ -421,6 +438,48 @@
   </div>
 </div>
 
+
+<!-- ══════════════════════════════════════════
+     OVERLAY: DESAFIO SPOT (Jogo das Diferenças)
+══════════════════════════════════════════ -->
+<div id="overlay-spot" class="overlay" style="display:none">
+  <div class="spot-box">
+    <div class="spot-header">
+      <div>
+        <div class="spot-title" id="spot-title">Jogo das Diferenças</div>
+        <div class="spot-subtitle" id="spot-subtitle">Clica nas diferenças da imagem de baixo!</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <span id="spot-found" class="spot-found">0 / 5</span>
+        <span id="spot-score-label" class="spot-score-label">0 pts</span>
+        <span id="spot-game-timer" class="drop-game-timer">⏱ —</span>
+      </div>
+    </div>
+
+    <div class="spot-images">
+      <!-- Original (top) -->
+      <div class="spot-img-wrap" id="spot-wrap-orig">
+        <div class="spot-img-label">✅ Original</div>
+        <div class="spot-canvas-wrap">
+          <img id="spot-img-orig" class="spot-img" src="" alt="">
+          <svg id="spot-svg-orig" class="spot-svg"></svg>
+        </div>
+      </div>
+
+      <!-- Error image (bottom) — clickable -->
+      <div class="spot-img-wrap" id="spot-wrap-err">
+        <div class="spot-img-label">🔍 Encontra as diferenças</div>
+        <div class="spot-canvas-wrap" id="spot-clickable" style="cursor:crosshair">
+          <img id="spot-img-err" class="spot-img" src="" alt="">
+          <svg id="spot-svg-err" class="spot-svg"></svg>
+        </div>
+      </div>
+    </div>
+
+    <div id="spot-feedback" class="spot-feedback"></div>
+    <button id="spot-close-btn" class="btn-primary" style="display:none;margin-top:.75rem" onclick="spotClose()">Continuar →</button>
+  </div>
+</div>
 <script src="state.js"></script>
 <script src="game.js"></script>
 <script src="ui.js"></script>
