@@ -5,7 +5,7 @@
 async function gameInit() {
   try {
     G.cfg        = DB.loadConfig();
-    G.challenges = DB.loadChallenges();
+    G.challenges = await DB.loadChallenges();
     G.questions  = await DB.loadQuestions();
     // Try to restore an interrupted game first
     const restored = await gameRestoreIfNeeded();
@@ -31,7 +31,7 @@ async function gameRestoreIfNeeded() {
     }
     // Restore state
     G.cfg            = DB.loadConfig();
-    G.challenges     = DB.loadChallenges();
+    G.challenges     = await DB.loadChallenges();
     G.questions      = G.questions && G.questions.length ? G.questions : await DB.loadQuestions();
     G.teamName       = snap.teamName;
     G.shopId         = snap.shopId;
@@ -85,8 +85,8 @@ async function gameNewFlow() {
 // Called when monitor picks a shop card
 async function gamePickShop(shop, teamName, totalPlayers, minutes) {
   G.cfg            = DB.loadConfig();
-  G.challenges     = DB.loadChallenges();
-  G.questions      = G.questions && G.questions.length ? G.questions : await DB.loadQuestions();
+  G.challenges     = G.challenges && G.challenges.length ? G.challenges : await DB.loadChallenges();
+  G.questions      = G.questions  && G.questions.length  ? G.questions  : await DB.loadQuestions();
   G.shopId         = shop.id;
   G.shopName       = shop.name;
   G.shopLogo       = shop.logo;

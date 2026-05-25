@@ -39,6 +39,12 @@ const UI = {
     if (!el) return;
     const s = G.secsLeft;
     el.textContent = fmtTime(s);
+    // Update timers in challenge overlays
+    const tStr = '⏱ ' + fmtTime(s);
+    ['drop-game-timer','body-game-timer','memory-game-timer'].forEach(id => {
+      const t = document.getElementById(id);
+      if (t) t.textContent = tStr;
+    });
     if (!G.cfg) { el.className = 'timer'; return; }
     el.className = 'timer' + (s <= G.cfg.dangerSeconds ? ' danger' : s <= G.cfg.warningSeconds ? ' warn' : '');
     if (warn) {
@@ -1157,4 +1163,442 @@ function slotPull() {
       }
     }, 380);
   }, 920);
+}
+
+// ─── CHALLENGE: showCard dispatch ─────────────────────────
+// Patch UI.showCard to route complex challenge types
+const _origShowCard = UI.showCard.bind(UI);
+UI.showCard = function() {
+  if (G.cardDeck === 'challenge' && G.cardItem) {
+    const type = G.cardItem.type || 'simple';
+    if      (type === 'drop')   { showDropChallenge(G.cardItem);   return; }
+    else if (type === 'body')   { showBodyChallenge(G.cardItem);   return; }
+    else if (type === 'memory') { showMemoryChallenge(G.cardItem); return; }
+    // 'simple' falls through to original
+  }
+  _origShowCard();
+};
+
+// ─── CHALLENGE: DROP ──────────────────────────────────────
+let _drop = {};
+
+function showDropChallenge(item) {
+  UI.hideDice();
+  _drop = {
+    item:       item,
+    products:   [...item.products].sort(() => Math.random() - .5),
+    idx:        0,
+    score:      0,
+    answered:   false,
+    running:    false,
+    timer:      null,
+    cartItems:  [],
+  };
+
+  // Big shop hero
+  document.getElementById('drop-shop-emoji-big').textContent = item.shopEmoji || '🛒';
+  document.getElementById('drop-shop-name-big').textContent  = item.shop || '';
+
+  document.getElementById('drop-score').textContent      = '0 pts';
+  document.getElementById('drop-feedback').textContent   = '';
+  document.getElementById('drop-feedback').className     = 'drop-feedback';
+  document.getElementById('drop-progress').textContent   = '';
+  document.getElementById('drop-cart-items').innerHTML   = '';
+  document.getElementById('drop-cart-count').textContent = '0';
+  document.getElementById('drop-product').style.display  = 'none';
+  document.getElementById('drop-btns').style.display     = 'flex';
+  document.getElementById('drop-btn-no').disabled        = true;
+  document.getElementById('drop-btn-yes').disabled       = true;
+  document.getElementById('drop-start-btn').style.display = '';
+  document.getElementById('drop-close-btn').style.display = 'none';
+  UI.showOverlay('overlay-drop');
+}
+
+function dropStart() {
+  document.getElementById('drop-start-btn').style.display = 'none';
+  document.getElementById('drop-btn-no').disabled  = false;
+  document.getElementById('drop-btn-yes').disabled = false;
+  _drop.running = true;
+  // Double rAF ensures overlay is fully painted before we measure offsetHeight
+  requestAnimationFrame(() => requestAnimationFrame(() => dropNextProduct()));
+}
+
+function dropNextProduct() {
+  if (_drop.idx >= _drop.products.length) { dropFinish(); return; }
+
+  const prod = _drop.products[_drop.idx];
+  _drop.answered = false;
+  _drop.currentProd = prod;
+
+  const el = document.getElementById('drop-product');
+  el.style.display = 'flex';
+  el.style.top     = '-80px';
+  document.getElementById('drop-product-emoji').textContent = prod.emoji;
+  document.getElementById('drop-product-name').textContent  = prod.name;
+  document.getElementById('drop-feedback').textContent = '';
+  document.getElementById('drop-feedback').className   = 'drop-feedback';
+  document.getElementById('drop-progress').textContent =
+    'Produto ' + (_drop.idx + 1) + ' de ' + _drop.products.length;
+
+  // Wait for paint before measuring arena height
+  const arena    = document.getElementById('drop-arena');
+  const arenaH   = arena.offsetHeight || 260;
+  const duration = (_drop.item.dropSeconds || 8) * 1000;
+  const steps    = 80;
+  const stepSize = (arenaH + 80) / steps;
+  let   step     = 0;
+
+  clearInterval(_drop.timer);
+  _drop.timer = setInterval(() => {
+    step++;
+    const top = -80 + step * stepSize;
+    el.style.top = top + 'px';
+
+    if (step >= steps) {
+      clearInterval(_drop.timer);
+      if (!_drop.answered) {
+        // Time ran out without answer — count as miss if belongs
+        if (_drop.currentProd.belongs) {
+          _drop.score += _drop.item.pointsWrong;
+          flashArena('wrong');
+          document.getElementById('drop-feedback').textContent = '⏱ Tempo esgotado! Era da loja!';
+          document.getElementById('drop-feedback').className   = 'drop-feedback wrong';
+        }
+        _drop.idx++;
+        setTimeout(dropNextProduct, 1000);
+      }
+    }
+  }, duration / steps);
+}
+
+function dropAnswer(yes) {
+  if (_drop.answered) return;
+  _drop.answered = true;
+  clearInterval(_drop.timer);
+
+  const prod     = _drop.currentProd;
+  const correct  = (yes === prod.belongs);
+  const el       = document.getElementById('drop-product');
+  const feedback = document.getElementById('drop-feedback');
+  const score    = document.getElementById('drop-score');
+
+  if (correct && yes) {
+    // Right — goes to cart
+    _drop.score += _drop.item.pointsCorrect;
+    _drop.cartItems.push(prod.emoji);
+    const cartEl = document.getElementById('drop-cart-items');
+    const span   = document.createElement('span');
+    span.className   = 'drop-cart-item';
+    span.textContent = prod.emoji;
+    cartEl.appendChild(span);
+    // Update cart count
+    const countEl = document.getElementById('drop-cart-count');
+    if (countEl) countEl.textContent = _drop.cartItems.length + ' / ' + _drop.item.products.filter(p => p.belongs).length;
+    // Bounce cart panel
+    const panel = document.getElementById('drop-cart-panel');
+    if (panel) { panel.classList.remove('cart-bounce'); void panel.offsetWidth; panel.classList.add('cart-bounce'); setTimeout(() => panel.classList.remove('cart-bounce'), 400); }
+    // Animate to cart
+    el.style.transition = 'top .4s ease-in';
+    el.style.top = ((document.getElementById('drop-arena') ? document.getElementById('drop-arena').offsetHeight || 260 : 260) - 60) + 'px';
+    flashArena('right');
+    feedback.textContent = '✓ Correcto! +' + _drop.item.pointsCorrect + ' pts';
+    feedback.className   = 'drop-feedback correct';feedback.className   = 'drop-feedback correct';
+  } else if (correct && !yes) {
+    // Right — correctly rejected
+    _drop.score += _drop.item.pointsCorrect;
+    el.style.transition = 'top .5s ease-in';
+    el.style.top = ((document.getElementById('drop-arena') ? document.getElementById('drop-arena').offsetHeight || 260 : 260) + 10) + 'px';
+    flashArena('right');
+    feedback.textContent = '✓ Correcto! Não era da loja. +' + _drop.item.pointsCorrect + ' pts';
+    feedback.className   = 'drop-feedback correct';
+  } else {
+    // Wrong
+    _drop.score += _drop.item.pointsWrong;
+    el.style.transition = 'top .8s ease-in';
+    el.style.top = ((document.getElementById('drop-arena') ? document.getElementById('drop-arena').offsetHeight || 260 : 260) + 10) + 'px';
+    flashArena('wrong');
+    feedback.textContent = yes
+      ? '✕ Errado! Não era da loja. ' + _drop.item.pointsWrong + ' pts'
+      : '✕ Errado! Era da loja. ' + _drop.item.pointsWrong + ' pts';
+    feedback.className = 'drop-feedback wrong';
+  }
+
+  document.getElementById('drop-score').textContent = Math.max(0, _drop.score) + ' pts';
+  _drop.idx++;
+  setTimeout(() => {
+    el.style.transition = '';
+    dropNextProduct();
+  }, 1200);
+}
+
+function flashArena(type) {
+  const arena = document.getElementById('drop-arena');
+  arena.classList.remove('flash-wrong', 'flash-right');
+  void arena.offsetWidth;
+  arena.classList.add(type === 'wrong' ? 'flash-wrong' : 'flash-right');
+  setTimeout(() => arena.classList.remove('flash-wrong', 'flash-right'), 500);
+}
+
+function dropFinish() {
+  _drop.running = false;
+  document.getElementById('drop-product').style.display  = 'none';
+  document.getElementById('drop-btn-no').disabled        = true;
+  document.getElementById('drop-btn-yes').disabled       = true;
+  document.getElementById('drop-close-btn').style.display = '';
+  document.getElementById('drop-btns').style.display     = 'none';
+  const pts = Math.max(0, _drop.score);
+  document.getElementById('drop-feedback').textContent = '🎉 Terminado! Fizeram ' + pts + ' pontos!';
+  document.getElementById('drop-feedback').className   = 'drop-feedback correct';
+  if (pts > 0) triggerConfetti();
+}
+
+function dropClose() {
+  clearInterval(_drop.timer);
+  UI.hideOverlay('overlay-drop');
+  const pts = Math.max(0, _drop.score);
+  if (pts > 0) {
+    G.points += pts;
+    UI.updatePoints();
+    UI._renderRanking(document.getElementById('ranking-list'));
+  }
+  stopCardTimer();
+  setTimeout(() => afterThrow(), 50);
+}
+
+// ─── CHALLENGE: BODY ──────────────────────────────────────
+function showBodyChallenge(item) {
+  UI.hideDice();
+  document.getElementById('body-hint').textContent = item.hint || '';
+  document.getElementById('body-word').textContent = item.word || '';
+  document.getElementById('body-result').textContent = '';
+  document.getElementById('body-result').className   = 'r2-result';
+  document.getElementById('body-close-btn').style.display = 'none';
+
+  const lettersEl = document.getElementById('body-letters');
+  lettersEl.innerHTML = '';
+  (item.letters || []).forEach(l => {
+    const card = document.createElement('div');
+    card.className = 'body-letter-card';
+    card.innerHTML = '<div class="body-letter-big">' + l.letter + '</div>'
+      + '<div class="body-letter-hint">' + (l.hint || '') + '</div>';
+    lettersEl.appendChild(card);
+  });
+
+  UI.showOverlay('overlay-body');
+}
+
+function bodyDone() {
+  const pts = G.cfg ? G.cfg.pointsChallenge : 20;
+  document.getElementById('body-result').textContent = '🎉 Muito bem! +' + pts + ' pts';
+  document.getElementById('body-result').className   = 'r2-result win';
+  document.getElementById('body-close-btn').style.display = '';
+  triggerConfetti();
+}
+
+function bodyRepeat() {
+  document.getElementById('body-result').textContent = '';
+}
+
+function bodyClose() {
+  UI.hideOverlay('overlay-body');
+  G.points += G.cfg ? G.cfg.pointsChallenge : 20;
+  UI.updatePoints();
+  UI._renderRanking(document.getElementById('ranking-list'));
+  stopCardTimer();
+  setTimeout(() => afterThrow(), 50);
+}
+
+// ─── CHALLENGE: MEMORY ────────────────────────────────────
+let _mem = {};
+
+function showMemoryChallenge(item) {
+  UI.hideDice();
+  _mem = {
+    item:          item,
+    rowIdx:        0,
+    selectedColor: null,
+    answers:       [],  // array of chosen colours per product
+    timer:         null,
+    phase:         'show', // 'show' | 'paint' | 'result'
+  };
+
+  document.getElementById('memory-close-btn').style.display = 'none';
+  document.getElementById('memory-result-wrap').style.display = 'none';
+  document.getElementById('memory-palette').style.display     = 'none';
+  memoryShowRow(0);
+  UI.showOverlay('overlay-memory');
+}
+
+function memoryShowRow(rowIdx) {
+  // Clear any running timer from previous row
+  clearInterval(_mem.timer);
+  _mem.timer = null;
+
+  _mem.rowIdx        = rowIdx;
+  _mem.phase         = 'show';
+  _mem.answers       = [];
+  _mem.selectedColor = null;
+  if (rowIdx === 0) _mem._totalPts = 0; // reset total on first row
+
+  const row      = _mem.item.rows[rowIdx];
+  const secs     = _mem.item.showSeconds || 5;
+  let   timeLeft = secs;
+
+  document.getElementById('memory-phase-label').textContent = '👀 Memoriza as cores! (' + (rowIdx + 1) + '/' + _mem.item.rows.length + ')';
+  document.getElementById('memory-timer-label').textContent = timeLeft + 's';
+  document.getElementById('memory-result-wrap').style.display = 'none';
+  document.getElementById('memory-palette').style.display     = 'none';
+  document.getElementById('memory-close-btn').style.display   = 'none';
+
+  memoryRenderProducts(row, true, null);
+
+  _mem.timer = setInterval(() => {
+    timeLeft--;
+    document.getElementById('memory-timer-label').textContent = timeLeft + 's';
+    if (timeLeft <= 0) {
+      clearInterval(_mem.timer);
+      _mem.timer = null;
+      memoryStartPaint(row);
+    }
+  }, 1000);
+}
+
+function memoryStartPaint(row) {
+  _mem.phase = 'paint';
+  _mem.answers = new Array(row.length).fill(null);
+  document.getElementById('memory-phase-label').textContent = '🎨 Pintam as cores!';
+  document.getElementById('memory-timer-label').textContent = '';
+
+  // Render products in B&W
+  memoryRenderProducts(row, false, _mem.answers);
+
+  // Render colour palette — shuffled so order is random
+  const colours = [...new Set(row.map(p => p.color))].sort(() => Math.random() - 0.5);
+  const colEl   = document.getElementById('memory-colours');
+  colEl.innerHTML = '';
+  colours.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'memory-colour-btn';
+    btn.style.background = c;
+    btn.dataset.color = c;
+    btn.onclick = () => memorySelectColor(c);
+    colEl.appendChild(btn);
+  });
+  document.getElementById('memory-palette').style.display = '';
+}
+
+function memorySelectColor(color) {
+  _mem.selectedColor = color;
+  document.querySelectorAll('.memory-colour-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.color === color);
+  });
+}
+
+function memoryPaintProduct(idx) {
+  if (_mem.phase !== 'paint') return;
+  if (!_mem.selectedColor) {
+    // Flash palette to indicate colour must be selected first
+    const pal = document.getElementById('memory-palette');
+    if (pal) { pal.style.outline = '2px solid var(--red)'; setTimeout(() => pal.style.outline = '', 600); }
+    return;
+  }
+  _mem.answers[idx] = _mem.selectedColor;
+  const row = _mem.item.rows[_mem.rowIdx];
+  memoryRenderProducts(row, false, _mem.answers);
+
+  // Check if all painted
+  if (_mem.answers.every(a => a !== null)) {
+    setTimeout(memoryShowResult, 600);
+  }
+}
+
+function memoryRenderProducts(row, showColor, answers) {
+  const el = document.getElementById('memory-products');
+  el.innerHTML = '';
+  row.forEach((prod, i) => {
+    const div = document.createElement('div');
+    div.className = 'memory-product' + (_mem.phase === 'paint' ? ' clickable' : '');
+    div.onclick   = _mem.phase === 'paint' ? () => memoryPaintProduct(i) : null;
+
+    const emojiEl  = document.createElement('div');
+    emojiEl.className   = 'memory-product-emoji';
+    emojiEl.textContent = prod.emoji;
+
+    const nameEl   = document.createElement('div');
+    nameEl.className   = 'memory-product-name';
+    nameEl.textContent = prod.name;
+
+    const swatch   = document.createElement('div');
+    const isPainted = !showColor && answers && answers[i];
+    swatch.className = 'memory-product-swatch' + (showColor || isPainted ? '' : ' bw');
+    swatch.style.background = showColor ? prod.color : (answers && answers[i] ? answers[i] : '#555');
+
+    div.appendChild(emojiEl);
+    div.appendChild(nameEl);
+    div.appendChild(swatch);
+    el.appendChild(div);
+  });
+}
+
+function memoryShowResult() {
+  _mem.phase = 'result';
+  const row     = _mem.item.rows[_mem.rowIdx];
+  const answers = _mem.answers;
+  let   correct = 0;
+
+  document.getElementById('memory-palette').style.display  = 'none';
+  document.getElementById('memory-result-wrap').style.display = '';
+  document.getElementById('memory-phase-label').textContent = '📊 Resultado!';
+
+  // Original row
+  const origEl = document.getElementById('memory-original-row');
+  origEl.innerHTML = '';
+  row.forEach((prod, i) => {
+    const s = document.createElement('div');
+    s.className = 'memory-compare-swatch ' + (answers[i] === prod.color ? 'match' : 'wrong');
+    s.style.background = prod.color;
+    s.title = prod.name;
+    origEl.appendChild(s);
+  });
+
+  // Answer row
+  const ansEl = document.getElementById('memory-answer-row');
+  ansEl.innerHTML = '';
+  row.forEach((prod, i) => {
+    const s = document.createElement('div');
+    s.className = 'memory-compare-swatch ' + (answers[i] === prod.color ? 'match' : 'wrong');
+    s.style.background = answers[i] || '#555';
+    s.title = prod.name;
+    ansEl.appendChild(s);
+    if (answers[i] === prod.color) correct++;
+  });
+
+  const pts = correct * (_mem.item.pointsCorrect || 10);
+  document.getElementById('memory-score-text').textContent =
+    correct + '/' + row.length + ' certas → ' + pts + ' pontos!';
+  if (pts > 0) triggerConfetti();
+
+  // Check if more rows
+  const hasMoreRows = _mem.rowIdx + 1 < _mem.item.rows.length;
+  const closeBtnEl  = document.getElementById('memory-close-btn');
+  closeBtnEl.style.display = '';
+  closeBtnEl.textContent   = hasMoreRows ? 'Próxima linha →' : 'Continuar →';
+  closeBtnEl.onclick       = hasMoreRows
+    ? () => memoryShowRow(_mem.rowIdx + 1)
+    : memoryClose;
+
+  _mem._totalPts = (_mem._totalPts || 0) + pts;
+}
+
+function memoryClose() {
+  clearInterval(_mem.timer);
+  UI.hideOverlay('overlay-memory');
+  const pts = _mem._totalPts || 0;
+  if (pts > 0) {
+    G.points += pts;
+    UI.updatePoints();
+    UI._renderRanking(document.getElementById('ranking-list'));
+  }
+  stopCardTimer();
+  setTimeout(() => afterThrow(), 50);
 }

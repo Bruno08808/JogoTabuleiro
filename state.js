@@ -19,18 +19,108 @@ const DEFAULT_CONFIG = {
 
 // ─── DEFAULT CHALLENGES ───────────────────────────────────
 const DEFAULT_CHALLENGES = [
-  { id:1,  text:'Toda a equipa faz o som de um animal diferente ao mesmo tempo!',  hint:'Leão, vaca, pato, sapo... cada um escolhe um!' },
-  { id:2,  text:'Em 10 segundos, nomeiem 5 animais que vivem no mar!',             hint:'Todos participam — vale repetir?' },
-  { id:3,  text:'Pose de estátua — toda a equipa imóvel durante 10 segundos!',     hint:'Sem se mexer, sem rir — vale!' },
-  { id:4,  text:'Façam uma fila do mais baixo para o mais alto em silêncio!',      hint:'Sem falar — só gestos!' },
-  { id:5,  text:'Todos saltam 5 vezes ao mesmo tempo — completamente sincronizados!', hint:'O monitor conta: 1, 2, 3...' },
-  { id:6,  text:'Nomeiem 5 cores do arco-íris em ordem em 10 segundos!',           hint:'Vermelho, laranja... lembram-se de todos?' },
-  { id:7,  text:'Toda a equipa faz a pose de um super-herói favorito!',            hint:'Todos ao mesmo tempo — criatividade total!' },
-  { id:8,  text:'Cada criança diz o nome de um animal que começa pela letra A!',   hint:'Todas diferentes — sem repetir!' },
-  { id:9,  text:'Reproduzam o som de uma tempestade só com o corpo!',              hint:'Palmas, pés, estalar dedos...' },
-  { id:10, text:'A equipa forma a letra C com os corpos em 15 segundos!',          hint:'Usem os corpos todos juntos!' },
-  { id:11, text:'Nomeiem 5 frutas em 10 segundos — todos participam!',             hint:'Maçã, banana... conseguem chegar a 5?' },
-  { id:12, text:'Toda a equipa ri durante 5 segundos seguidos!',                   hint:'Ahahah — quem aguentar sem parar?' },
+
+  // ── Tipo: drop (Cai no Carrinho) ────────────────────────
+  {
+    id: 1, type: 'drop',
+    shop: 'Mercado',
+    shopEmoji: '🛒',
+    pointsCorrect: 10,
+    pointsWrong: -5,
+    maxProducts: 5,
+    products: [
+      { emoji: '🌸', name: 'Flor',          belongs: true  },
+      { emoji: '🥕', name: 'Cenoura',       belongs: true  },
+      { emoji: '🧀', name: 'Queijo',        belongs: true  },
+      { emoji: '🏄', name: 'Prancha Surf',  belongs: false },
+      { emoji: '📱', name: 'Smartphone',    belongs: false },
+    ],
+  },
+  {
+    id: 2, type: 'drop',
+    shop: 'Papelaria',
+    shopEmoji: '🎒',
+    pointsCorrect: 10,
+    pointsWrong: -5,
+    maxProducts: 5,
+    products: [
+      { emoji: '🖊️', name: 'Caneta',        belongs: true  },
+      { emoji: '🖍️', name: 'Lápis de cor',  belongs: true  },
+      { emoji: '📖', name: 'Livro',         belongs: true  },
+      { emoji: '🧅', name: 'Cebola',        belongs: false },
+      { emoji: '🐟', name: 'Peixe',         belongs: false },
+    ],
+  },
+  {
+    id: 3, type: 'drop',
+    shop: 'Loja de Ferramentas',
+    shopEmoji: '🚚',
+    pointsCorrect: 10,
+    pointsWrong: -5,
+    maxProducts: 5,
+    products: [
+      { emoji: '🔧', name: 'Berbequim',        belongs: true  },
+      { emoji: '🪚', name: 'Motosserra',       belongs: true  },
+      { emoji: '🔩', name: 'Serrote',          belongs: true  },
+      { emoji: '🪥', name: 'Escova de dentes', belongs: false },
+      { emoji: '🧴', name: 'Champô',           belongs: false },
+    ],
+  },
+
+  // ── Tipo: body (Escreve com o Corpo) ────────────────────
+  {
+    id: 4, type: 'body',
+    word: 'LOJA',
+    hint: 'Escolhe 4 colegas — cada um faz uma letra com o corpo!',
+    letters: [
+      { letter: 'L', hint: 'Joelho no chão, braço em L' },
+      { letter: 'O', hint: 'Forma um círculo com o corpo' },
+      { letter: 'J', hint: 'Cabeça para baixo, pernas retas' },
+      { letter: 'A', hint: 'Pernas abertas, braços juntos em cima' },
+    ],
+  },
+
+  // ── Tipo: memory (Lembra-te das Cores) ──────────────────
+  {
+    id: 5, type: 'memory',
+    shop: 'Champô',
+    showSeconds: 5,
+    pointsCorrect: 10,
+    rows: [
+      [
+        { emoji: '🧴', name: 'Champô A', color: '#9b59b6' }, // roxo
+        { emoji: '🧴', name: 'Champô B', color: '#27ae60' }, // verde
+        { emoji: '🧴', name: 'Champô C', color: '#e74c3c' }, // vermelho
+        { emoji: '🧴', name: 'Champô D', color: '#e67e22' }, // laranja
+      ],
+      [
+        { emoji: '🧴', name: 'Champô E', color: '#2980b9' }, // azul
+        { emoji: '🧴', name: 'Champô F', color: '#f1c40f' }, // amarelo
+        { emoji: '🧴', name: 'Champô G', color: '#1abc9c' }, // teal
+        { emoji: '🧴', name: 'Champô H', color: '#e91e63' }, // rosa
+      ],
+    ],
+  },
+  {
+    id: 6, type: 'memory',
+    shop: 'Ferragens',
+    showSeconds: 5,
+    pointsCorrect: 10,
+    rows: [
+      [
+        { emoji: '🔧', name: 'Ferro',     color: '#27ae60' }, // verde
+        { emoji: '⚙️', name: 'STIHL',    color: '#e67e22' }, // laranja
+        { emoji: '🧴', name: 'Champô',   color: '#2ecc71' }, // verde claro
+        { emoji: '👜', name: 'Mala',      color: '#3498db' }, // azul
+      ],
+    ],
+  },
+
+  // ── Tipo: simple (texto + Feito!) ───────────────────────
+  { id: 7,  type: 'simple', text: 'Toda a equipa faz o som de um animal diferente ao mesmo tempo!',  hint: 'Leão, vaca, pato... cada um escolhe um!' },
+  { id: 8,  type: 'simple', text: 'Em 10 segundos, nomeiem 5 animais que vivem no mar!',             hint: 'Todos participam!' },
+  { id: 9,  type: 'simple', text: 'Pose de estátua — toda a equipa imóvel durante 10 segundos!',     hint: 'Sem se mexer, sem rir!' },
+  { id: 10, type: 'simple', text: 'Façam uma fila do mais baixo para o mais alto em silêncio!',      hint: 'Só gestos, sem falar!' },
 ];
 
 // ─── DEFAULT QUESTIONS ────────────────────────────────────
@@ -69,19 +159,63 @@ const DB = {
   saveConfig(cfg) { this._set(this.KEYS.config, cfg); },
 
   // Challenges
-  loadChallenges()     { return this._get(this.KEYS.challenges, DEFAULT_CHALLENGES); },
-  saveChallenges(arr)  { this._set(this.KEYS.challenges, arr); },
+  // ── CHALLENGES (Supabase) ────────────────────────────────
+  async loadChallenges() {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(
+        this.SB_URL + '/rest/v1/challenges?order=id.asc',
+        { headers: this._sbHeaders(), signal: controller.signal }
+      );
+      clearTimeout(timeout);
+      if (!res.ok) throw new Error(await res.text());
+      const rows = await res.json();
+      // Parse data jsonb field if it's a string
+      rows.forEach(r => {
+        if (r.data && typeof r.data === 'string') {
+          try { r.data = JSON.parse(r.data); } catch(e) {}
+        }
+        // Merge data fields into root for easy access
+        if (r.data) Object.assign(r, r.data);
+      });
+      return rows.length ? rows : DEFAULT_CHALLENGES;
+    } catch(err) {
+      console.error('Supabase loadChallenges:', err);
+      return DEFAULT_CHALLENGES;
+    }
+  },
+
+  async addChallenge(c) {
+    try {
+      const res = await fetch(
+        this.SB_URL + '/rest/v1/challenges',
+        { method:'POST', headers:this._sbHeaders(), body:JSON.stringify(c) }
+      );
+      if (!res.ok) throw new Error(await res.text());
+    } catch(err) { console.error('Supabase addChallenge:', err); }
+  },
+
+  async deleteChallenge(id) {
+    try {
+      const res = await fetch(
+        this.SB_URL + '/rest/v1/challenges?id=eq.' + id,
+        { method:'DELETE', headers:this._sbHeaders() }
+      );
+      if (!res.ok) throw new Error(await res.text());
+    } catch(err) { console.error('Supabase deleteChallenge:', err); }
+  },
+
+  // no-op for compatibility
+  async saveChallenges(arr) {},
 
   // ── QUESTIONS (Supabase) ─────────────────────────────────
   async loadQuestions() {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
       const res = await fetch(
         this.SB_URL + '/rest/v1/questions?order=id.asc',
-        { headers: this._sbHeaders(), signal: controller.signal }
+        { headers: this._sbHeaders() }
       );
-      clearTimeout(timeout);
       if (!res.ok) throw new Error(await res.text());
       const rows = await res.json();
       return rows.length ? rows : [];

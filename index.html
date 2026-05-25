@@ -312,6 +312,115 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════
+     OVERLAY: DESAFIO DROP (Cai no Carrinho)
+══════════════════════════════════════════ -->
+<div id="overlay-drop" class="overlay" style="display:none">
+  <div class="drop-challenge-box">
+
+    <!-- Shop title — big and prominent -->
+    <div class="drop-shop-hero">
+      <span id="drop-shop-emoji-big" class="drop-shop-emoji-big"></span>
+      <div class="drop-shop-title-wrap">
+        <span class="drop-shop-sublabel">Identifica os produtos de:</span>
+        <span id="drop-shop-name-big" class="drop-shop-name-big"></span>
+      </div>
+    </div>
+
+    <!-- Top bar: timer + score -->
+    <div class="drop-header">
+      <span id="drop-game-timer" class="drop-game-timer">⏱ —</span>
+      <span id="drop-progress" class="drop-progress"></span>
+      <span id="drop-score" class="drop-score">0 pts</span>
+    </div>
+
+    <p class="drop-instruction">Este produto pertence à loja?</p>
+
+    <!-- Arena + Cart -->
+    <div class="drop-arena-wrap">
+      <div class="drop-arena" id="drop-arena">
+        <div id="drop-product" class="drop-product" style="display:none">
+          <div id="drop-product-emoji" class="drop-product-emoji"></div>
+          <div id="drop-product-name" class="drop-product-name"></div>
+        </div>
+      </div>
+
+      <!-- Cart — fixed on the right, fills up -->
+      <div class="drop-cart-panel" id="drop-cart-panel">
+        <div class="drop-cart-top">🛒</div>
+        <div class="drop-cart-body" id="drop-cart-body">
+          <div id="drop-cart-items" class="drop-cart-items"></div>
+        </div>
+        <div class="drop-cart-count" id="drop-cart-count">0</div>
+      </div>
+    </div>
+
+    <div class="drop-btns" id="drop-btns">
+      <button class="drop-btn-no"  id="drop-btn-no"  onclick="dropAnswer(false)">✕ Não é daqui</button>
+      <button class="drop-btn-yes" id="drop-btn-yes" onclick="dropAnswer(true)">✓ Para o carrinho</button>
+    </div>
+    <div id="drop-feedback" class="drop-feedback"></div>
+    <button id="drop-start-btn" class="btn-primary" style="margin-top:1rem" onclick="dropStart()">▶ Iniciar desafio</button>
+    <button id="drop-close-btn" class="btn-primary" style="display:none;margin-top:1rem" onclick="dropClose()">Continuar →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     OVERLAY: DESAFIO BODY (Escreve com o Corpo)
+══════════════════════════════════════════ -->
+<div id="overlay-body" class="overlay" style="display:none">
+  <div class="body-challenge-box">
+    <div class="body-header">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:28px">🕺</span>
+        <h2 class="body-title">Escreve com o corpo!</h2>
+      </div>
+      <span id="body-game-timer" class="drop-game-timer">⏱ —</span>
+    </div>
+    <p id="body-hint" class="ov-sub" style="text-align:center;margin:.25rem 0"></p>
+    <div id="body-word" class="body-word"></div>
+    <div id="body-letters" class="body-letters"></div>
+    <p id="body-result" class="r2-result" style="min-height:24px;text-align:center"></p>
+    <div style="display:flex;gap:10px;justify-content:center;margin-top:1rem">
+      <button class="btn-done" onclick="bodyDone()">✓ Feito!</button>
+      <button class="btn-repeat" onclick="bodyRepeat()">🔁 Repetir</button>
+    </div>
+    <button id="body-close-btn" class="btn-primary" style="display:none;margin-top:.75rem" onclick="bodyClose()">Continuar →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     OVERLAY: DESAFIO MEMORY (Lembra-te das Cores)
+══════════════════════════════════════════ -->
+<div id="overlay-memory" class="overlay" style="display:none">
+  <div class="memory-box">
+    <div class="memory-header">
+      <span id="memory-phase-label" class="memory-phase">👀 Memoriza as cores!</span>
+      <span id="memory-timer-label" class="memory-timer"></span>
+    </div>
+    <!-- Colour palette -->
+    <div id="memory-palette" class="memory-palette" style="display:none">
+      <span class="memory-palette-label">Clica a cor → clica o produto</span>
+      <div id="memory-colours" class="memory-colours"></div>
+    </div>
+    <!-- Products row -->
+    <div id="memory-products" class="memory-products"></div>
+    <!-- Result comparison -->
+    <div id="memory-result-wrap" class="memory-result-wrap" style="display:none">
+      <div class="memory-compare-row">
+        <span class="memory-compare-label">Original</span>
+        <div id="memory-original-row" class="memory-compare-items"></div>
+      </div>
+      <div class="memory-compare-row">
+        <span class="memory-compare-label">Vossa resposta</span>
+        <div id="memory-answer-row" class="memory-compare-items"></div>
+      </div>
+      <p id="memory-score-text" class="memory-score-text"></p>
+    </div>
+    <button id="memory-close-btn" class="btn-primary" style="display:none;margin-top:1rem" onclick="memoryClose()">Continuar →</button>
+  </div>
+</div>
+
 <script src="state.js"></script>
 <script src="game.js"></script>
 <script src="ui.js"></script>

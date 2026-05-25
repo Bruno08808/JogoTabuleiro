@@ -322,7 +322,7 @@ let newLogoBase64 = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
   AC.cfg        = DB.loadConfig();
-  AC.challenges = DB.loadChallenges();
+  AC.challenges = await DB.loadChallenges();
   AC.questions  = await DB.loadQuestions();
   AC.shops      = [];
   loadTheme();
@@ -513,19 +513,38 @@ async function addFakeGame() {
 
 // ── Challenges
 function renderChallenges() {
+  if (!AC.challenges || !AC.challenges.length) {
+    document.getElementById('list-challenges').innerHTML = '<p style="color:var(--text3);padding:1rem">A carregar desafios...</p>';
+    return;
+  }
+  const typeLabels = { drop:'🛒 Cai no Carrinho', body:'🕺 Escreve com o Corpo', memory:'🎨 Lembra-te das Cores', simple:'💬 Simples' };
   document.getElementById('list-challenges').innerHTML =
-    AC.challenges.map((ch,i) => `
-      <div class="item-row">
-        <span class="item-num">${i+1}</span>
-        <div class="item-body">
-          <input type="text" placeholder="Desafio" value="${e(ch.text)}" oninput="AC.challenges[${i}].text=this.value">
-          <input type="text" placeholder="Dica" value="${e(ch.hint||'')}" oninput="AC.challenges[${i}].hint=this.value">
-        </div>
-        <button class="btn-del" onclick="delChallenge(${i})">✕</button>
-      </div>`).join('');
+    AC.challenges.map((ch, i) => {
+      const type  = ch.type || 'simple';
+      const badge = typeLabels[type] || type;
+      const isComplex = type !== 'simple';
+      return '<div class="item-row">'
+        + '<span class="item-num">' + (i+1) + '</span>'
+        + '<div class="item-body">'
+        + '<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">'
+        + '<span style="font-size:10px;font-weight:800;color:var(--blue);background:rgba(26,140,255,.12);border:1px solid rgba(26,140,255,.3);border-radius:6px;padding:2px 7px">' + badge + '</span>'
+        + '</div>'
+        + '<input type="text" placeholder="Desafio" value="' + e(ch.text||'') + '" oninput="AC.challenges[' + i + '].text=this.value">'
+        + (isComplex
+          ? '<div style="font-size:11px;color:var(--text2);padding:4px 0">Detalhes editáveis no Supabase</div>'
+          : '<input type="text" placeholder="Dica" value="' + e(ch.hint||'') + '" oninput="AC.challenges[' + i + '].hint=this.value">')
+        + '</div>'
+        + '<button class="btn-del" onclick="delChallenge(' + ch.id + ')">✕</button>'
+        + '</div>';
+    }).join('');
 }
-function addChallenge() { const m=AC.challenges.reduce((x,c)=>Math.max(x,c.id),0); AC.challenges.push({id:m+1,text:'Novo desafio',hint:''}); renderChallenges(); }
-function delChallenge(i) { if(AC.challenges.length<=1){msg('Mínimo 1.',true);return;} AC.challenges.splice(i,1); renderChallenges(); }
+async function delChallenge(id) {
+  if (!confirm('Apagar este desafio?')) return;
+  await DB.deleteChallenge(id);
+  AC.challenges = await DB.loadChallenges();
+  renderChallenges();
+  renderPreview();
+}
 
 // ── Questions
 function renderQuestions() {
@@ -568,8 +587,10 @@ function setFilter(f) {
 function renderPreview() {
   const cfg=AC.cfg; let html='';
   if(currentFilter!=='question') AC.challenges.forEach((ch,i)=>{
-    html+=`<div class="preview-card challenge"><div class="pc-header"><span class="pc-badge challenge">⚡ Desafio ${i+1}</span><span class="pc-pts">+${cfg.pointsChallenge}pts</span></div><p class="pc-text">${e(ch.text)}</p>${ch.hint?`<p class="pc-hint">${e(ch.hint)}</p>`:''}<p class="pc-time">⏱ ${cfg.cardTime}s</p></div>`;
-  });
+    const typeIcons = { drop:'🛒', body:'🕺', memory:'🎨', simple:'⚡' };
+    const icon = typeIcons[ch.type||'simple'] || '⚡';
+    html += '<div class="preview-card challenge"><div class="pc-header"><span class="pc-badge challenge">' + icon + ' Desafio ' + (i+1) + '</span><span class="pc-pts">+' + cfg.pointsChallenge + 'pts</span></div><p class="pc-text">' + e(ch.text||'') + '</p><div class="pc-answer"><span class="pc-answer-label">Tipo</span><span class="pc-answer-text">' + (ch.type||'simple') + '</span></div><p class="pc-time">⏱ ' + cfg.cardTime + 's</p></div>';
+  });;
   if(currentFilter!=='challenge') AC.questions.forEach((q,i)=>{
     const answerHtml = q.type === 'numeric'
       ? '<div class="pc-answer"><span class="pc-answer-label">Resposta</span><span class="pc-answer-text">' + e(String(q.answer_number||'')) + '</span></div>'
@@ -604,14 +625,15 @@ function saveAll(silent) {
   AC.cfg.r1PlusMax      = iv('c-pmax',60);     AC.cfg.r1MinusMin     = iv('c-mmin',10);
   AC.cfg.r1MinusMax     = iv('c-mmax',30);     AC.cfg.pointsChallenge= iv('c-pchall',20);
   AC.cfg.pointsQuestion = iv('c-pques',10);
-  DB.saveConfig(AC.cfg); DB.saveChallenges(AC.challenges);
+  DB.saveConfig(AC.cfg);
+  // Challenges are in Supabase — no batch save
   // Questions are in Supabase — no batch save needed
   // shops are saved per-item to Supabase — no batch save needed
   if (!silent) msg('Guardado!', false);
 }
 async function resetAll() {
   if(!confirm('Repor tudo (não apaga jogos)?')) return;
-  DB.resetAll(); AC.cfg=DB.loadConfig(); AC.challenges=DB.loadChallenges(); AC.questions=await DB.loadQuestions();
+  DB.resetAll(); AC.cfg=DB.loadConfig(); AC.challenges=await DB.loadChallenges(); AC.questions=await DB.loadQuestions();
   renderConfig(); renderChallenges(); renderQuestions(); renderShops(); renderPreview();
   msg('Valores repostos.',false);
 }
