@@ -7,6 +7,7 @@ const DEFAULT_CONFIG = {
   gameMinutes:     10,
   playersPerTeam:  5,
   cardTime:        30,
+  chalTime:        45,
   r1PlusMin:       15,
   r1PlusMax:       60,
   r1MinusMin:      10,

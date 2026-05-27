@@ -526,13 +526,13 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:v
 .memory-products { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
 .memory-product {
   display:flex; flex-direction:column; align-items:center; gap:8px;
-  background:var(--bg3); border:2px solid var(--border2); border-radius:14px;
-  padding:12px; cursor:pointer; min-width:100px; transition:all .15s;
+  background:transparent; border:2px solid var(--border2); border-radius:14px;
+  padding:12px; cursor:pointer; min-width:130px; transition:all .15s;
 }
 .memory-product.clickable:hover  { border-color:var(--purple); transform:translateY(-2px); }
 .memory-product.painted          { border-color:var(--green); }
 .memory-product-emoji  { font-size:40px; }
-.memory-product-img    { width:80px; height:100px; object-fit:contain; border-radius:8px; }
+.memory-product-img    { width:130px; height:160px; object-fit:contain; background:transparent; }
 .memory-product-name   { font-size:11px; color:var(--text2); text-align:center; }
 .memory-product-swatch { width:36px; height:36px; border-radius:50%; border:2px solid var(--border2); transition:background .2s; }
 .memory-product-swatch.bw { filter:grayscale(1); }
@@ -762,3 +762,23 @@ html, body { height:100%; background:var(--bg); color:var(--text); font-family:v
   background: #ffffff;
   border-color: rgba(0,0,0,0.18);
 }
+
+/* ─── Challenge Timer Bar ──────────────────────────────── */
+.chal-timer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text1);
+  margin-bottom: 10px;
+}
+.chal-timer-icon { font-size: 20px; }
+.chal-timer-secs { 
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+  color: var(--green);
+  transition: color .3s;
+}
+.chal-timer-secs.urgent { color: #ff3d5a; }

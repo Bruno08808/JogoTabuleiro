@@ -1191,6 +1191,33 @@ UI.showCard = function() {
 // ─── CHALLENGE: DROP ──────────────────────────────────────
 let _drop = {};
 
+
+// ─── CHALLENGE COUNTDOWN TIMER ────────────────────────────
+let _chalTimer = null;
+const CHAL_SECS = () => (G.cfg && G.cfg.chalTime) || 45;
+
+function chalTimerStart(timerElId, onTimeout) {
+  chalTimerStop();
+  let secs = CHAL_SECS();
+  const el = document.getElementById(timerElId);
+  if (el) { el.textContent = secs; el.className = 'chal-timer-secs'; }
+  _chalTimer = setInterval(() => {
+    secs--;
+    if (el) {
+      el.textContent = secs;
+      if (secs <= 10) el.className = 'chal-timer-secs urgent';
+    }
+    if (secs <= 0) {
+      chalTimerStop();
+      onTimeout();
+    }
+  }, 1000);
+}
+
+function chalTimerStop() {
+  if (_chalTimer) { clearInterval(_chalTimer); _chalTimer = null; }
+}
+
 function showDropChallenge(item) {
   UI.hideDice();
   _drop = {
@@ -1362,6 +1389,7 @@ function dropFinish() {
 }
 
 function dropClose() {
+  chalTimerStop();
   clearInterval(_drop.timer);
   UI.hideOverlay('overlay-drop');
   const pts = Math.max(0, _drop.score);
@@ -1394,6 +1422,7 @@ function showBodyChallenge(item) {
   });
 
   UI.showOverlay('overlay-body');
+  chalTimerStart('body-chal-timer', () => bodyClose());
 }
 
 function bodyDone() {
@@ -1409,6 +1438,7 @@ function bodyRepeat() {
 }
 
 function bodyClose() {
+  chalTimerStop();
   UI.hideOverlay('overlay-body');
   G.points += G.cfg ? G.cfg.pointsChallenge : 20;
   UI.updatePoints();
@@ -1436,6 +1466,7 @@ function showMemoryChallenge(item) {
   document.getElementById('memory-palette').style.display     = 'none';
   memoryShowRow(0);
   UI.showOverlay('overlay-memory');
+  chalTimerStart('memory-timer-label', () => memoryClose());
 }
 
 function memoryShowRow(rowIdx) {
@@ -1548,16 +1579,11 @@ function memoryRenderProducts(row, showColor, answers) {
       div.appendChild(emojiEl);
     }
 
-    const nameEl = document.createElement('div');
-    nameEl.className   = 'memory-product-name';
-    nameEl.textContent = prod.name;
-
     const swatch = document.createElement('div');
     const isPainted = !showColor && answers && answers[i];
     swatch.className = 'memory-product-swatch' + (showColor || isPainted ? '' : ' bw');
     swatch.style.background = showColor ? prod.color : (answers && answers[i] ? answers[i] : '#555');
 
-    div.appendChild(nameEl);
     div.appendChild(swatch);
     el.appendChild(div);
   });
@@ -1614,6 +1640,7 @@ function memoryShowResult() {
 }
 
 function memoryClose() {
+  chalTimerStop();
   clearInterval(_mem.timer);
   UI.hideOverlay('overlay-memory');
   const pts = _mem._totalPts || 0;
@@ -1764,6 +1791,7 @@ function spotFinish() {
 }
 
 function spotClose() {
+  chalTimerStop();
   UI.hideOverlay('overlay-spot');
   if (_spot.score > 0) {
     G.points += _spot.score;
